@@ -37,7 +37,7 @@ function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function filtered(){const sf=schoolFilter.value;return participants.filter(p=>!sf||p.school===sf)}
 function populateParticipantSelect(){const selected=participantSelect.value;participantSelect.innerHTML='<option value="">— Select participant / प्रतिभागी चुनें —</option>';participants.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{const o=document.createElement("option");o.value=String(p.n);o.textContent=(p.salutationEn?p.salutationEn+" ":"")+p.name+" — "+p.school;participantSelect.appendChild(o)});participantSelect.value=selected;selectEditBtn.disabled=!participantSelect.value}
 const storageKey="ziet-ahmedabad-music-participant-edits-v1";
-const CORRECTION_ENDPOINT = "PASTE_DEPLOYED_APPS_SCRIPT_WEB_APP_URL_HERE";
+const CORRECTION_ENDPOINT = "https://script.google.com/macros/s/AKfycbznM0k6hy-dnLRD1ld9Dva8DF8Bw_MIbvJzBRau2pavgExfTK4yJ4viZpctTF1JjBhN1g/exec";
 try{const saved=JSON.parse(localStorage.getItem(storageKey)||"{}");participants.forEach(p=>{if(saved[p.n])Object.assign(p,saved[p.n])})}catch(e){}
 populateSchools();
 const backdrop=document.getElementById("editBackdrop"),form=document.getElementById("editForm");let editing=null;
