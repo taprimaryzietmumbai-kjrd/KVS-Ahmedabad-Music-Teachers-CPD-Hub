@@ -37,6 +37,7 @@ function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function filtered(){const q=norm(search.value),sf=schoolFilter.value;return participants.filter(p=>(!sf||p.school===sf)&&(!q||norm([p.name,p.hi,p.school,p.designation,p.salutationEn,p.salutationHi].join(" ")).includes(q)))}
 const storageKey="ziet-ahmedabad-music-participant-edits-v1";
 try{const saved=JSON.parse(localStorage.getItem(storageKey)||"{}");participants.forEach(p=>{if(saved[p.n])Object.assign(p,saved[p.n])})}catch(e){}
+populateSchools();
 const backdrop=document.getElementById("editBackdrop"),form=document.getElementById("editForm");let editing=null;
 function openEditor(id){editing=participants.find(p=>p.n===id);if(!editing)return;document.getElementById("editSalEn").value=editing.salutationEn||"";document.getElementById("editName").value=editing.name;document.getElementById("editSalHi").value=editing.salutationHi||"";document.getElementById("editHi").value=editing.hi;document.getElementById("editSchool").value=editing.school;backdrop.style.display="flex";document.getElementById("editName").focus()}
 function closeEditor(){backdrop.style.display="none";editing=null}
