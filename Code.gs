@@ -131,7 +131,7 @@ function publicParticipantsJsonp_(e) {
       school: school,
       schoolHi: c.schoolHi ? String(row[c.schoolHi - 1] || "").trim() : "",
       employeeCode: c.employee ? String(row[c.employee - 1] || "").trim() : "",
-      joiningYear: (function(){ var j=c.find(["Year of Joining","Year of Joining in KVS","KVS Joining Year","Sangathan Joining Year","Year of Joining in Sangathan","Date of Joining","Joining Date","संगठन में कार्यग्रहण का वर्ष"]); var v=j?String(row[j-1]||"").trim():""; var m=v.match(/(19|20)\\d{2}/); return m?m[0]:v; })(),
+      joiningYear: (function(){ var j=c.find(["Year of Joining","Year of Joining in KVS","KVS Joining Year","Sangathan Joining Year","Year of Joining in Sangathan","Date of Joining","Joining Date","संगठन में कार्यग्रहण का वर्ष"]); var v=j?String(row[j-1]||"").trim():""; var m=v.match(/(19|20)\d{2}/); return m?m[0]:v; })(),
       designation: c.find(["Designation","Post","Post Held"," पदनाम"]) ? String(row[c.find(["Designation","Post","Post Held","पदनाम"]) - 1] || "").trim() : "PRT (Music)",
       salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
       salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
@@ -160,7 +160,7 @@ function columns_(sh) {
   return {
     headers:headers,
     find:find,
-    employee:find(["Employee Code","Employee ID","Emp Code","Employee No","कर्मचारी कोड"]),
+    employee:find(["Employee Code","Employee ID","Emp Code","Employee No","Code","कर्मचारी कोड"]),
     email:find(["Email","email","Email Address","E-mail","Official Email","ईमेल","ईमेल पता"]),
     name:find(["Participant Name","Participant Name English","Name","Teacher Name","Name in English","English Name","Name of Participant","Name of the Participant","Name of Teacher","Name of the Teacher","Teacher's Name","Name (English)","Full Name"]),
     hindiName:find(["Name in Hindi","Hindi Name","Hindi Name of Participant","Participant Name Hindi","Name of Participant in Hindi","Name (Hindi)","Hindi Full Name","प्रतिभागी का नाम","प्रतिभागी का नाम ","नाम हिंदी में","शिक्षक का नाम","हिंदी में नाम","नाम हिंदी"]),
