@@ -86,6 +86,9 @@ function doPost(e) {
 
 function doGet(e) {
   const page = e && e.parameter ? String(e.parameter.page || "") : "";
+  if (page === "participants") {
+    return publicParticipantsJsonp_(e);
+  }
   if (page === "hostel") {
     return HtmlService.createHtmlOutputFromFile("Hostel")
       .setTitle("Hostel Room Preference — ZIET Mumbai")
@@ -94,6 +97,46 @@ function doGet(e) {
   return HtmlService.createHtmlOutputFromFile("Profile")
     .setTitle("ZIET Participant Personal Profile")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+}
+
+
+/**
+ * Public directory feed for the GitHub Participants' Hub.
+ * Exposes only directory fields; never returns personal/private profile fields.
+ * JSONP is used because the caller is a GitHub Pages site on another origin.
+ * URL: ?page=participants&callback=participantDirectoryCallback
+ */
+function publicParticipantsJsonp_(e) {
+  const callback = String((e && e.parameter && e.parameter.callback) || "");
+  if (!/^[A-Za-z_$][0-9A-Za-z_$\.]*$/.test(callback)) {
+    return ContentService.createTextOutput("Invalid callback.").setMimeType(ContentService.MimeType.TEXT);
+  }
+  const sh = mainSheet_().sh;
+  const data = sh.getDataRange().getDisplayValues();
+  if (data.length < 2) return ContentService.createTextOutput(callback + "([]);").setMimeType(ContentService.MimeType.JAVASCRIPT);
+  const c = columns_(sh);
+  if (!c.name || !c.hindiName || !c.school) {
+    throw new Error("Public directory requires English name, Hindi name and Vidyalaya columns in PRTM ADI.");
+  }
+  const output = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const name = String(row[c.name - 1] || "").trim();
+    const hindiName = String(row[c.hindiName - 1] || "").trim();
+    const school = String(row[c.school - 1] || "").trim();
+    if (!name && !hindiName && !school) continue;
+    output.push({
+      name: name,
+      hi: hindiName,
+      school: school,
+      schoolHi: c.schoolHi ? String(row[c.schoolHi - 1] || "").trim() : "",
+      designation: c.find(["Designation","Post","Post Held"," पदनाम"]) ? String(row[c.find(["Designation","Post","Post Held","पदनाम"]) - 1] || "").trim() : "PRT (Music)",
+      salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
+      salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
+    });
+  }
+  const json = JSON.stringify(output).replace(/</g, "\\u003c");
+  return ContentService.createTextOutput(callback + "(" + json + ");").setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
 function normalized_(v) {
