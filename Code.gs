@@ -275,3 +275,30 @@ function submitHostelPreference(data) {
   MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Hostel Room Preference Submitted — KV Music Teachers CPD",body:"A hostel preference was submitted. Please verify eligibility and allotment before confirming.\n\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\nDOB: "+dob+" (age "+age+")\nDifferently Abled: "+(disability||"Not specified")+"\nBlock: "+block+"\nFloor: "+floor+"\nToilet: "+toilet+"\nGround-floor reason: "+(groundReason||"Not provided")+"\nSupporting document: "+(fileUrl||"Not uploaded")});
   return {ok:true,message:"Hostel preference submitted successfully. Allotment is subject to coordinator verification. "+(fileUrl ? "Supporting document uploaded to the designated Drive folder." : "")};
 }
+
+
+/** Populate the hostel form from the participant master sheet. */
+function getHostelParticipantOptions() {
+  const {sh}=mainSheet_();
+  const c=columns_(sh);
+  if(!c.employee || !c.name) throw new Error("The participant sheet needs Name and Employee Code columns.");
+  const values=sh.getDataRange().getDisplayValues();
+  const dobCol=c.find(["Date of Birth","DOB","Birth Date","जन्म तिथि","जन्म दिनांक"]);
+  const out=[];
+  for(let i=1;i<values.length;i++){
+    const row=values[i];
+    const employeeCode=String(row[c.employee-1]||"").trim();
+    const name=String(row[c.name-1]||"").trim();
+    if(!employeeCode || !name) continue;
+    out.push({
+      employeeCode:employeeCode,
+      name:name,
+      email:c.email?String(row[c.email-1]||"").trim():"",
+      gender:c.gender?String(row[c.gender-1]||"").trim():"",
+      disability:c.disability?String(row[c.disability-1]||"").trim():"",
+      dob:dobCol?String(row[dobCol-1]||"").trim():"",
+      rowNumber:i+1
+    });
+  }
+  return out;
+}
