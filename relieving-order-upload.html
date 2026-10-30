@@ -15,9 +15,10 @@
 <div id="status" class="status" role="status" aria-live="polite"></div>
 <p class="small">After a successful upload, please wait for further instructions. Submission does not automatically advance you to another page.</p></section></main><div class="footer">ZIET Mumbai · KVS Ahmedabad Region</div>
 <iframe name="uploadResponseFrame" id="uploadResponseFrame" title="Upload response" style="display:none"></iframe>
+<script src="config.js"></script>
 <script>
-/* Set this to the deployed Google Apps Script Web App URL after deploying RelievingOrderUpload.gs. */
-const UPLOAD_ENDPOINT = "PASTE_DEPLOYED_RELIEVING_ORDER_UPLOAD_WEB_APP_URL_HERE";
+/* Upload settings are maintained in config.js in this GitHub repository. */
+const UPLOAD_ENDPOINT = (window.ZIET_HUB_CONFIG && window.ZIET_HUB_CONFIG.relievingOrderUploadEndpoint) || "";
 const form=document.getElementById("uploadForm"),fileInput=document.getElementById("relievingFile"),btn=document.getElementById("submitBtn"),statusBox=document.getElementById("status");
 let uploadToken="";
 function showStatus(type,message){statusBox.className="status "+type;statusBox.textContent=message;}
@@ -31,7 +32,7 @@ window.addEventListener("message",event=>{
 });
 form.addEventListener("submit",async e=>{
  e.preventDefault();const file=fileInput.files[0];if(!file)return;
- if(UPLOAD_ENDPOINT==="PASTE_DEPLOYED_RELIEVING_ORDER_UPLOAD_WEB_APP_URL_HERE"){showStatus("error","The upload page is in place, but the secure upload service has not been connected yet. Please contact the workshop coordinator; do not assume the document has been submitted.");return;}
+ if(!UPLOAD_ENDPOINT){showStatus("error","The upload page is in place, but the secure upload service has not been connected yet. Please contact the workshop coordinator; do not assume the document has been submitted.");return;}
  if(file.size>8*1024*1024){showStatus("error","The file is larger than 8 MB. Please choose a smaller file.");return;}
  const allowed=["application/pdf","image/jpeg","image/png"];if(!allowed.includes(file.type)){showStatus("error","Please upload a PDF, JPG, or PNG file.");return;}
  btn.disabled=true;btn.textContent="Uploading…";showStatus("info","Uploading your relieving order. Please keep this page open.");
