@@ -156,7 +156,7 @@ function submitIdentityCorrectionRequest(data) {
   const reason = clean(data.reason);
   if (clean(data.website)) return {ok:true,message:"Your request has been received."};
   if (!name || !school || (!newEmployeeCode && !newEmail)) throw new Error("Please enter your name, Vidyalaya, and the corrected Employee Code or new email.");
-  const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (currentEmail && !emailPattern.test(currentEmail)) throw new Error("Please enter a valid current email address.");
   if (newEmail && !emailPattern.test(newEmail)) throw new Error("Please enter a valid new email address.");
   const {ss,sh} = mainSheet_();
