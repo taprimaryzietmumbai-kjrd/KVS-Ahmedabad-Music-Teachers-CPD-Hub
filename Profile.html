@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ZIET Participant Personal Profile</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#1d2b46;background:#f3f6fb}body{margin:0;padding:18px}.card{max-width:650px;margin:20px auto;background:#fff;border-radius:16px;padding:22px;box-shadow:0 8px 28px #182b4a16}h1{font-size:1.45rem;margin-top:0;color:#173568}.note{line-height:1.5;color:#4e5b70}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:grid;gap:5px;font-weight:600;font-size:.92rem}input,select{width:100%;box-sizing:border-box;padding:11px;border:1px solid #c8d1df;border-radius:8px;font:inherit;background:white}button{border:0;border-radius:9px;background:#174ea6;color:#fff;font-weight:700;padding:12px 16px;cursor:pointer}button.secondary{background:#edf2fa;color:#173568;border:1px solid #c8d1df}.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.hidden{display:none!important}.status{margin-top:14px;padding:10px;border-radius:8px;display:none}.status.show{display:block}.status.err{background:#fff0f0;color:#9b1c1c}.status.ok{background:#eaf7ed;color:#176534}.privacy{font-size:.86rem;background:#fff7e6;padding:12px;border-radius:8px;line-height:1.5}@media(max-width:520px){.grid{grid-template-columns:1fr}body{padding:10px}.card{padding:16px}}
+</style></head><body><main class="card">
+<h1>ZIET Mumbai — Participant Personal Profile</h1>
+<p class="note">व्यक्तिगत जानकारी देखने या सुधारने के लिए पहले अपनी पहचान सत्यापित करें। निजी विवरण सार्वजनिक प्रतिभागी सूची में नहीं दिखेंगे।</p>
+<div class="privacy">OTP केवल मुख्य Google Sheet में पहले से दर्ज ईमेल पते पर भेजा जाएगा। अपना Employee Code और पंजीकृत ईमेल दर्ज करें। OTP किसी के साथ साझा न करें।</div>
+<section id="step1"><h2>1. Verify your identity / पहचान सत्यापित करें</h2><div class="grid"><label>Employee Code<input id="employeeCode" autocomplete="off" required></label><label>Registered Email / पंजीकृत ईमेल<input id="registeredEmail" type="email" autocomplete="email" required></label></div><div class="row"><button id="sendOtp">Send OTP / OTP भेजें</button></div></section>
+<section id="step2" class="hidden"><h2>2. Enter OTP / OTP दर्ज करें</h2><label>6-digit OTP<input id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label><div class="row"><button id="verifyOtp">Verify OTP / सत्यापित करें</button><button id="back" class="secondary">Back</button></div></section>
+<section id="profile" class="hidden"><h2>3. Personal details / व्यक्तिगत विवरण</h2><p class="note">कृपया केवल सही जानकारी भरें। Employee Code और पंजीकृत ईमेल पहचान सत्यापन के लिए लॉक हैं। यदि ईमेल बदलना है, तो समन्वयक से संपर्क करें।</p>
+<div class="grid">
+<label>Employee Code<input id="pEmployee" disabled></label><label>Registered Email<input id="pEmail" disabled></label>
+<label>English Salutation<select id="pSalEn"><option value="">— Select —</option><option>Shri</option><option>Smt.</option><option>Km.</option><option>Dr.</option></select></label><label>Participant Name (English)<input id="pName"></label>
+<label>हिंदी संबोधन<select id="pSalHi"><option value="">— चुनें —</option><option>श्री</option><option>श्रीमती</option><option>सुश्री</option><option>डॉ.</option></select></label><label>प्रतिभागी का नाम (हिंदी)<input id="pHindiName"></label>
+<label>Vidyalaya (English)<input id="pSchool"></label><label>विद्यालय का नाम (हिंदी)<input id="pSchoolHi"></label>
+<label>Gender / लिंग<select id="pGender"><option value="">— Select / चुनें —</option><option>Female / महिला</option><option>Male / पुरुष</option><option>Other / अन्य</option><option>Prefer not to say / बताना नहीं चाहते</option></select></label>
+<label>Social Category / सामाजिक वर्ग<select id="pCategory"><option value="">— Select / चुनें —</option><option>General / सामान्य</option><option>SC</option><option>ST</option><option>OBC</option><option>EWS</option><option>Other / अन्य</option><option>Prefer not to say / बताना नहीं चाहते</option></select></label>
+<label>Differently Abled / दिव्यांग<select id="pDisability"><option value="">— Select / चुनें —</option><option>No / नहीं</option><option>Yes / हाँ</option><option>Prefer not to say / बताना नहीं चाहते</option></select></label>
+<label>Phone Number / फोन नंबर<input id="pPhone" type="tel" autocomplete="tel"></label>
+</div><div class="row"><button id="saveProfile">Save Corrections / सुधार सेव करें</button><button id="logout" class="secondary">Lock Profile</button></div></section>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+</main>
+<script>
+let sessionToken="";
+const $=id=>document.getElementById(id);
+function status(msg,err=false){$("status").textContent=msg;$("status").className="status show "+(err?"err":"ok")}
+function callServer(fn,args,done){google.script.run.withSuccessHandler(done).withFailureHandler(e=>status(e&&e.message?e.message:"Something went wrong. Please try again.",true))[fn](...args)}
+$("sendOtp").onclick=()=>{const ec=$("employeeCode").value.trim(),email=$("registeredEmail").value.trim();if(!ec||!email){status("Enter Employee Code and registered email.",true);return}$("sendOtp").disabled=true;callServer("sendProfileOtp",[ec,email],r=>{status(r.message);$("step2").classList.remove("hidden");$("sendOtp").disabled=false})};
+$("back").onclick=()=>{$("step2").classList.add("hidden");$("otp").value=""};
+$("verifyOtp").onclick=()=>{const ec=$("employeeCode").value.trim(),email=$("registeredEmail").value.trim(),otp=$("otp").value.trim();if(!otp){status("Enter the OTP.",true);return}callServer("verifyProfileOtp",[ec,email,otp],r=>{sessionToken=r.token;status(r.message);$("step1").classList.add("hidden");$("step2").classList.add("hidden");$("profile").classList.remove("hidden");callServer("getPrivateProfile",[sessionToken],fillProfile)})};
+function fillProfile(p){$("pEmployee").value=p.employeeCode||"";$("pEmail").value=p.email||"";$("pSalEn").value=p.salutationEn||"";$("pName").value=p.name||"";$("pSalHi").value=p.salutationHi||"";$("pHindiName").value=p.hindiName||"";$("pSchool").value=p.school||"";$("pSchoolHi").value=p.schoolHi||"";$("pGender").value=p.gender||"";$("pCategory").value=p.socialCategory||"";$("pDisability").value=p.differentlyAbled||"";$("pPhone").value=p.phone||""}
+$("saveProfile").onclick=()=>{const data={salutationEn:$("pSalEn").value,name:$("pName").value.trim(),salutationHi:$("pSalHi").value,hindiName:$("pHindiName").value.trim(),school:$("pSchool").value.trim(),schoolHi:$("pSchoolHi").value.trim(),gender:$("pGender").value,socialCategory:$("pCategory").value,differentlyAbled:$("pDisability").value,phone:$("pPhone").value.trim()};if(!data.name||!data.hindiName||!data.school){status("Please complete English name, Hindi name and English Vidyalaya.",true);return}callServer("savePrivateProfile",[sessionToken,data],r=>status(r.message))};
+$("logout").onclick=()=>{sessionToken="";$("profile").classList.add("hidden");$("step1").classList.remove("hidden");$("employeeCode").value="";$("registeredEmail").value="";$("otp").value="";status("Profile locked. Please verify again to access it.")};
+</script></body></html>
