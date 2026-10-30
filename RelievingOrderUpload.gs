@@ -3,7 +3,7 @@
  * Deploy as a Google Apps Script Web App (Execute as: Me; access: Anyone).
  * Set DESTINATION_FOLDER_ID to the Drive folder where uploaded orders should be stored.
  */
-const DESTINATION_FOLDER_ID = "PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE";
+const DESTINATION_FOLDER_ID = "1_pcA6doI1sFT11M4j7Kt3SAbiDKUK9mM";
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 function doGet() {
