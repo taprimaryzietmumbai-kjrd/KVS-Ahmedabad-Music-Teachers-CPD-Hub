@@ -28,20 +28,28 @@ function doPost(e) {
     const oldName = clean(p.previousName);
     const oldSchool = clean(p.previousSchool);
     const oldHindi = clean(p.previousHi);
-    const matches = [];
+    const stripEn = v => String(v || "").replace(/^(Dr\\.?|Shri|Sh\\.?|Smt\\.?|Mrs\\.?|Ms\\.?|Mr\\.?|Km\\.?)[\\s.]*/i, "");
+    const stripHi = v => String(v || "").replace(/^(डॉ\\.?|श्रीमती|श्री|सुश्री)[\\s.]*/, "");
+    const nameKey = v => normalized_(stripEn(v));
+    const hindiKey = v => normalized_(stripHi(v));
+    const nameMatches = [];
     for (let i=1; i<rows.length; i++) {
       const row=rows[i];
-      const sheetName = normalized_(row[c.name-1]);
-      const formName = normalized_(oldName);
-      const sheetHindi = normalized_(row[c.hindiName-1]);
-      const formHindi = normalized_(oldHindi);
-      const nameMatches = sheetName === formName || sheetName.endsWith(formName) || formName.endsWith(sheetName);
-      const hindiMatches = sheetHindi === formHindi || sheetHindi.endsWith(formHindi) || formHindi.endsWith(sheetHindi);
-      if (nameMatches &&
-          normalized_(row[c.school-1])===normalized_(oldSchool) &&
-          hindiMatches) matches.push(i+1);
+      if (nameKey(row[c.name-1])===nameKey(oldName) &&
+          hindiKey(row[c.hindiName-1])===hindiKey(oldHindi)) nameMatches.push(i+1);
     }
-    if (matches.length !== 1) throw new Error(matches.length ? "More than one matching participant was found. No changes were made; please contact the coordinator." : "The participant's existing name, Hindi name and school did not match the master sheet. No changes were made.");
+    // The public directory uses shortened school labels; use school only to resolve duplicate name matches.
+    let matches = nameMatches;
+    if (matches.length > 1) {
+      const schoolMatches = matches.filter(rn =>
+        normalized_(rows[rn-1][c.school-1]).includes(normalized_(oldSchool)) ||
+        normalized_(oldSchool).includes(normalized_(rows[rn-1][c.school-1]))
+      );
+      if (schoolMatches.length) matches = schoolMatches;
+    }
+    if (matches.length !== 1) throw new Error(matches.length
+      ? "More than one participant matches the submitted name and Hindi name. No changes were made."
+      : "No master-sheet row matched the submitted English and Hindi names. Check the name columns in PRTM ADI."); 
     const rowNumber=matches[0];
     const getOrAddCol=(current,header)=>{
       if(current) return current;
