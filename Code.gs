@@ -60,6 +60,50 @@ function findEmployeeRow_(sh, cols, employeeCode, email) {
   }
   return 0;
 }
+/**
+ * Public request form for Employee Code / registered email corrections.
+ * It never edits the master participant row; the coordinator verifies and updates it manually.
+ */
+function submitIdentityCorrectionRequest(data) {
+  data = data || {};
+  const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
+  const name = clean(data.name);
+  const school = clean(data.school);
+  const currentEmployeeCode = clean(data.currentEmployeeCode);
+  const currentEmail = clean(data.currentEmail).toLowerCase();
+  const newEmployeeCode = clean(data.newEmployeeCode);
+  const newEmail = clean(data.newEmail).toLowerCase();
+  const reason = clean(data.reason);
+  // Quietly reject automated submissions using the hidden honeypot field.
+  if (clean(data.website)) return {ok:true,message:"Your request has been received."};
+  if (!name || !school || (!newEmployeeCode && !newEmail)) throw new Error("Please enter your name, Vidyalaya, and the corrected Employee Code or new email.");
+  const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  if (currentEmail && !emailPattern.test(currentEmail)) throw new Error("Please enter a valid current email address.");
+  if (newEmail && !emailPattern.test(newEmail)) throw new Error("Please enter a valid new email address.");
+  const {ss} = mainSheet_();
+  const tabName = "Identity Correction Requests";
+  let log = ss.getSheetByName(tabName);
+  if (!log) {
+    log = ss.insertSheet(tabName);
+    log.appendRow(["Timestamp","Full Name","Vidyalaya","Current Employee Code","Current Registered Email","Requested Employee Code","Requested New Email","Reason","Status"]);
+    log.setFrozenRows(1);
+  }
+  log.appendRow([new Date(),name,school,currentEmployeeCode,currentEmail,newEmployeeCode,newEmail,reason,"Pending coordinator verification"]);
+  MailApp.sendEmail({
+    to:"taprimaryzietmumbai@gmail.com",
+    subject:"Employee Code / Email correction request — ZIET Participant Hub",
+    body:"A participant has submitted an identity correction request. No master-sheet record has been changed.\n\nName: "+name+
+      "\nVidyalaya: "+school+
+      "\nCurrent Employee Code: "+(currentEmployeeCode||"Not provided")+
+      "\nCurrent registered email: "+(currentEmail||"Not provided")+
+      "\nRequested Employee Code: "+(newEmployeeCode||"No change requested")+
+      "\nRequested new email: "+(newEmail||"No change requested")+
+      "\nReason: "+(reason||"Not provided")+
+      "\n\nPlease verify the participant's identity before updating the master sheet. The request is logged in the '"+tabName+"' tab."
+  });
+  return {ok:true,message:"आपका अनुरोध भेज दिया गया है। समन्वयक सत्यापन के बाद रिकॉर्ड अपडेट करेंगे। / Request submitted. The coordinator will verify the details before updating the record."};
+}
+
 function sendProfileOtp(employeeCode, registeredEmail) {
   employeeCode = String(employeeCode || "").trim();
   registeredEmail = String(registeredEmail || "").trim().toLowerCase();
