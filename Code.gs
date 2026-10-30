@@ -130,6 +130,8 @@ function publicParticipantsJsonp_(e) {
       hi: hindiName,
       school: school,
       schoolHi: c.schoolHi ? String(row[c.schoolHi - 1] || "").trim() : "",
+      employeeCode: c.employee ? String(row[c.employee - 1] || "").trim() : "",
+      joiningYear: (function(){ var j=c.find(["Year of Joining","Year of Joining in KVS","KVS Joining Year","Sangathan Joining Year","Year of Joining in Sangathan","Date of Joining","Joining Date","संगठन में कार्यग्रहण का वर्ष"]); var v=j?String(row[j-1]||"").trim():""; var m=v.match(/(19|20)\\d{2}/); return m?m[0]:v; })(),
       designation: c.find(["Designation","Post","Post Held"," पदनाम"]) ? String(row[c.find(["Designation","Post","Post Held","पदनाम"]) - 1] || "").trim() : "PRT (Music)",
       salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
       salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
