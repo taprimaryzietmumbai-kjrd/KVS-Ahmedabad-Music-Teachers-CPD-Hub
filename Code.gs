@@ -1,77 +1,153 @@
 /**
- * ZIET Mumbai – Participant Correction Web App
- * Writes approved participant corrections directly to the main roster.
+ * ZIET Mumbai – Participant Hub
+ * OTP-protected personal profile portal. Deploy as a Google Apps Script Web App.
+ * Identity is verified against Employee Code + already-registered email in the main sheet.
  */
 const SPREADSHEET_ID = "1pksDgeV53waKMP1pmj0CWbpP3qyAT8nrN8RhU9Y-mKE";
 const MAIN_SHEET_NAME = "PRTM ADI";
 const SUBMISSIONS_SHEET = "Correction Submissions";
+const OTP_TTL_SECONDS = 300;
+const SESSION_TTL_SECONDS = 900;
+const MAX_OTP_ATTEMPTS = 5;
 
 function doGet() {
-  return ContentService.createTextOutput("ZIET Participant Correction endpoint is ready.");
+  return HtmlService.createHtmlOutputFromFile("Profile")
+    .setTitle("ZIET Participant Personal Profile")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
 
-function doPost(e) {
-  try {
-    const payload = JSON.parse((e && e.parameter && e.parameter.payload) || "{}");
-    ["participantId", "name", "hi", "school"].forEach(function (key) {
-      if (payload[key] === undefined || String(payload[key]).trim() === "") {
-        throw new Error("Missing required field: " + key);
-      }
-    });
-
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const main = ss.getSheetByName(MAIN_SHEET_NAME) || ss.getSheets()[0];
-    const lastCol = main.getLastColumn();
-    const headers = main.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
-    const normalize = s => String(s || "").toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, "");
-    const headerKeys = headers.map(normalize);
-    const findCol = aliases => {
-      const aliasesN = aliases.map(normalize);
-      return headerKeys.findIndex(h => aliasesN.includes(h)) + 1;
-    };
-
-    // Participant serial/ID is matched against column A; this prevents updating a different row.
-    const serial = Number(payload.participantId);
-    const ids = main.getRange(2, 1, Math.max(main.getLastRow() - 1, 1), 1).getValues().flat();
-    const rowIndex = ids.findIndex(v => Number(v) === serial);
-    if (rowIndex < 0) throw new Error("Participant ID " + serial + " was not found in column A of the main sheet.");
-    const targetRow = rowIndex + 2;
-
-    const englishNameCol = findCol(["Participant Name", "Name", "Teacher Name", "Name in English", "Teacher's Name"]);
-    const hindiNameCol = findCol(["Name in Hindi", "Hindi Name", "प्रतिभागी का नाम", "नाम हिंदी में", "शिक्षक का नाम"]);
-    const schoolCol = findCol(["Vidyalaya", "School", "School Name", "Vidyalaya Name", "KV Name"]);
-    let schoolHiCol = findCol(["Vidyalaya Name Hindi", "Hindi Vidyalaya", "School Name Hindi", "विद्यालय का नाम", "विद्यालय का नाम हिंदी में"]);
-
-    if (!englishNameCol || !hindiNameCol || !schoolCol) {
-      throw new Error("Could not identify English name, Hindi name, and English Vidyalaya columns from row 1 headers. No changes were made.");
-    }
-    if (!schoolHiCol) {
-      schoolHiCol = main.getLastColumn() + 1;
-      main.getRange(1, schoolHiCol).setValue("Vidyalaya Name (Hindi)");
-    }
-
-    const englishFull = [payload.salutationEn, payload.name].filter(Boolean).join(" ").trim();
-    const hindiFull = [payload.salutationHi, payload.hi].filter(Boolean).join(" ").trim();
-    main.getRange(targetRow, englishNameCol).setValue(englishFull);
-    main.getRange(targetRow, hindiNameCol).setValue(hindiFull);
-    main.getRange(targetRow, schoolCol).setValue(payload.school);
-    main.getRange(targetRow, schoolHiCol).setValue(payload.schoolHi || "");
-
-    // Keep an audit trail of what was submitted and applied.
-    let log = ss.getSheetByName(SUBMISSIONS_SHEET);
-    if (!log) {
-      log = ss.insertSheet(SUBMISSIONS_SHEET);
-      log.appendRow(["Submitted At", "Participant ID", "Previous English Name", "Previous Hindi Name", "Previous Vidyalaya", "Previous Hindi Vidyalaya", "Updated English Name", "Updated Hindi Name", "Updated Vidyalaya", "Updated Hindi Vidyalaya", "Status"]);
-      log.setFrozenRows(1);
-    }
-    log.appendRow([
-      new Date(), serial, payload.previousName || "", payload.previousHi || "",
-      payload.previousSchool || "", payload.previousSchoolHi || "",
-      englishFull, hindiFull, payload.school, payload.schoolHi || "", "Applied to main sheet"
-    ]);
-
-    return ContentService.createTextOutput(JSON.stringify({ok:true, message:"Main participant record updated."})).setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ok:false, message:String(err.message || err)})).setMimeType(ContentService.MimeType.JSON);
+function normalized_(v) {
+  return String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, "");
+}
+function mainSheet_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(MAIN_SHEET_NAME);
+  if (!sh) throw new Error('Main sheet tab "' + MAIN_SHEET_NAME + '" was not found. Update MAIN_SHEET_NAME in Code.gs.');
+  return {ss:ss, sh:sh};
+}
+function columns_(sh) {
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
+  const find = aliases => {
+    const wanted = aliases.map(normalized_);
+    const i = headers.findIndex(h => wanted.includes(normalized_(h)));
+    return i < 0 ? 0 : i + 1;
+  };
+  return {
+    headers:headers,
+    find:find,
+    employee:find(["Employee Code","Employee ID","Emp Code","Employee No","कर्मचारी कोड"]),
+    email:find(["Email","Email Address","E-mail","Official Email","ईमेल","ईमेल पता"]),
+    name:find(["Participant Name","Name","Teacher Name","Name in English","Teacher's Name"]),
+    hindiName:find(["Name in Hindi","Hindi Name","प्रतिभागी का नाम","नाम हिंदी में","शिक्षक का नाम"]),
+    school:find(["Vidyalaya","School","School Name","Vidyalaya Name","KV Name"]),
+    schoolHi:find(["Vidyalaya Name Hindi","Hindi Vidyalaya","School Name Hindi","विद्यालय का नाम","विद्यालय का नाम हिंदी में"]),
+    gender:find(["Gender","Sex","लिंग"]),
+    category:find(["Social Category","Category","Reservation Category","सामाजिक वर्ग"]),
+    disability:find(["Differently Abled","Disability","Divyang","दिव्यांग","दिव्यांगता"]),
+    phone:find(["Phone Number","Mobile Number","Phone","Mobile","Contact Number","मोबाइल नंबर"]),
+    salutationEn:find(["English Salutation","Salutation"]),
+    salutationHi:find(["Hindi Salutation","हिंदी संबोधन"])
+  };
+}
+function findEmployeeRow_(sh, cols, employeeCode, email) {
+  if (!cols.employee || !cols.email) throw new Error("The main sheet must have Employee Code and registered Email columns before OTP access can be used. No personal information was returned.");
+  const values = sh.getDataRange().getDisplayValues();
+  const ec = String(employeeCode).trim().toLowerCase();
+  const em = String(email).trim().toLowerCase();
+  for (let r=1;r<values.length;r++) {
+    if (String(values[r][cols.employee-1]).trim().toLowerCase()===ec &&
+        String(values[r][cols.email-1]).trim().toLowerCase()===em) return r+1;
   }
+  return 0;
+}
+function sendProfileOtp(employeeCode, registeredEmail) {
+  employeeCode = String(employeeCode || "").trim();
+  registeredEmail = String(registeredEmail || "").trim().toLowerCase();
+  if (!employeeCode || !registeredEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registeredEmail)) throw new Error("Enter your Employee Code and registered email address.");
+  const cache = CacheService.getScriptCache();
+  const throttleKey = "otp-rate-" + Utilities.base64EncodeWebSafe(employeeCode.toLowerCase()+"|"+registeredEmail).slice(0,70);
+  const sent = Number(cache.get(throttleKey) || 0);
+  if (sent >= 3) throw new Error("Too many OTP requests. Please wait 15 minutes and try again.");
+  const {sh} = mainSheet_();
+  const cols = columns_(sh);
+  const row = findEmployeeRow_(sh, cols, employeeCode, registeredEmail);
+  if (!row) throw new Error("The Employee Code and email did not match a registered record. Contact the workshop coordinator to verify your details.");
+  const otp = String(Math.floor(100000 + Math.random()*900000));
+  const key = "otp-" + Utilities.base64EncodeWebSafe(employeeCode.toLowerCase()+"|"+registeredEmail).slice(0,70);
+  cache.put(key, JSON.stringify({hash:Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, otp).map(b=>(b+256).toString(16).slice(-2)).join(""), row:row, attempts:0}), OTP_TTL_SECONDS);
+  cache.put(throttleKey, String(sent+1), 900);
+  MailApp.sendEmail({
+    to:registeredEmail,
+    subject:"Your ZIET Participant Hub verification code",
+    body:"Your one-time verification code is: "+otp+"\n\nIt expires in 5 minutes and can be used only once. Do not share it with anyone. If you did not request this code, you can ignore this email."
+  });
+  return {ok:true,message:"OTP sent to your registered email. Check your inbox and spam folder. The code expires in 5 minutes."};
+}
+function verifyProfileOtp(employeeCode, registeredEmail, otp) {
+  employeeCode=String(employeeCode||"").trim();
+  registeredEmail=String(registeredEmail||"").trim().toLowerCase();
+  otp=String(otp||"").trim();
+  const cache=CacheService.getScriptCache();
+  const key="otp-"+Utilities.base64EncodeWebSafe(employeeCode.toLowerCase()+"|"+registeredEmail).slice(0,70);
+  const raw=cache.get(key);
+  if(!raw) throw new Error("OTP expired or not requested. Request a new code.");
+  const state=JSON.parse(raw);
+  state.attempts++;
+  const hash=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,otp).map(b=>(b+256).toString(16).slice(-2)).join("");
+  if(hash!==state.hash) {
+    if(state.attempts>=MAX_OTP_ATTEMPTS) cache.remove(key); else cache.put(key,JSON.stringify(state),OTP_TTL_SECONDS);
+    throw new Error(state.attempts>=MAX_OTP_ATTEMPTS?"Too many incorrect attempts. Request a new OTP.":"Incorrect OTP. Please try again.");
+  }
+  cache.remove(key);
+  const token=Utilities.getUuid()+Utilities.getUuid();
+  cache.put("profile-session-"+token,JSON.stringify({row:state.row,employeeCode:employeeCode,email:registeredEmail}),SESSION_TTL_SECONDS);
+  return {ok:true,token:token,message:"Verified. Your private profile is available for 15 minutes."};
+}
+function getPrivateProfile(token) {
+  const session=CacheService.getScriptCache().get("profile-session-"+String(token||""));
+  if(!session) throw new Error("Your session has expired. Please verify by OTP again.");
+  const s=JSON.parse(session);
+  const {sh}=mainSheet_(); const c=columns_(sh);
+  const row=sh.getRange(s.row,1,1,sh.getLastColumn()).getDisplayValues()[0];
+  const val=col=>col?row[col-1]:"";
+  return {
+    employeeCode:val(c.employee), email:val(c.email), name:val(c.name), hindiName:val(c.hindiName),
+    school:val(c.school), schoolHi:val(c.schoolHi), gender:val(c.gender), socialCategory:val(c.category),
+    differentlyAbled:val(c.disability), phone:val(c.phone), salutationEn:val(c.salutationEn), salutationHi:val(c.salutationHi)
+  };
+}
+function savePrivateProfile(token, data) {
+  const session=CacheService.getScriptCache().get("profile-session-"+String(token||""));
+  if(!session) throw new Error("Your session has expired. Please verify by OTP again.");
+  const s=JSON.parse(session);
+  data=data||{};
+  const {ss,sh}=mainSheet_(); const c=columns_(sh);
+  const updates=[
+    ["name",c.name],["hindiName",c.hindiName],["school",c.school],["schoolHi",c.schoolHi],
+    ["gender",c.gender],["socialCategory",c.category],["differentlyAbled",c.disability],["phone",c.phone]
+  ];
+  if(!c.name||!c.hindiName||!c.school) throw new Error("The main sheet needs English Name, Hindi Name and Vidyalaya columns. Contact the coordinator.");
+  // Email and Employee Code are identity keys and are not self-editable here.
+  updates.forEach(([key,col])=>{if(col && data[key]!==undefined) sh.getRange(s.row,col).setValue(String(data[key]).trim());});
+  if(c.schoolHi && data.schoolHi!==undefined) sh.getRange(s.row,c.schoolHi).setValue(String(data.schoolHi).trim());
+  if(c.gender && data.gender!==undefined) sh.getRange(s.row,c.gender).setValue(String(data.gender).trim());
+  if(c.category && data.socialCategory!==undefined) sh.getRange(s.row,c.category).setValue(String(data.socialCategory).trim());
+  if(c.disability && data.differentlyAbled!==undefined) sh.getRange(s.row,c.disability).setValue(String(data.differentlyAbled).trim());
+  if(c.phone && data.phone!==undefined) sh.getRange(s.row,c.phone).setValue(String(data.phone).trim());
+  // If the master sheet lacks optional private-data columns, add them with headers.
+  const addIfMissing=(key, header, value)=>{
+    if(!value) return;
+    let col=key==="gender"?c.gender:key==="socialCategory"?c.category:key==="differentlyAbled"?c.disability:key==="phone"?c.phone:key==="schoolHi"?c.schoolHi:0;
+    if(!col){col=sh.getLastColumn()+1;sh.getRange(1,col).setValue(header);}
+    sh.getRange(s.row,col).setValue(String(value).trim());
+  };
+  addIfMissing("schoolHi","Vidyalaya Name (Hindi)",data.schoolHi);
+  addIfMissing("gender","Gender",data.gender);
+  addIfMissing("socialCategory","Social Category",data.socialCategory);
+  addIfMissing("differentlyAbled","Differently Abled",data.differentlyAbled);
+  addIfMissing("phone","Phone Number",data.phone);
+  const log=ss.getSheetByName(SUBMISSIONS_SHEET)||ss.insertSheet(SUBMISSIONS_SHEET);
+  if(log.getLastRow()===0) log.appendRow(["Timestamp","Employee Code","Action","Updated Fields"]);
+  log.appendRow([new Date(),s.employeeCode,"OTP verified profile update",Object.keys(data).join(", ")]);
+  return {ok:true,message:"Your profile corrections have been saved to the main sheet."};
 }
