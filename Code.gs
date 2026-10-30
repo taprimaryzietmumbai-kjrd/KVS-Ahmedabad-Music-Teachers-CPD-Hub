@@ -28,8 +28,8 @@ function doPost(e) {
     const oldName = clean(p.previousName);
     const oldSchool = clean(p.previousSchool);
     const oldHindi = clean(p.previousHi);
-    const stripEn = v => String(v || "").replace(/^(Dr\\.?|Shri|Sh\\.?|Smt\\.?|Mrs\\.?|Ms\\.?|Mr\\.?|Km\\.?)[\\s.]*/i, "");
-    const stripHi = v => String(v || "").replace(/^(डॉ\\.?|श्रीमती|श्री|सुश्री)[\\s.]*/, "");
+    const stripEn = v => String(v || "").replace(/^(Dr\.?|Shri|Sh\.?|Smt\.?|Mrs\.?|Ms\.?|Mr\.?|Km\.?)[\s.]*/i, "");
+    const stripHi = v => String(v || "").replace(/^(डॉ\.?|श्रीमती|श्री|सुश्री)[\s.]*/, "");
     const nameKey = v => normalized_(stripEn(v));
     const hindiKey = v => normalized_(stripHi(v));
     const nameMatches = [];
