@@ -108,7 +108,7 @@ function doGet(e) {
  */
 function publicParticipantsJsonp_(e) {
   const callback = String((e && e.parameter && e.parameter.callback) || "");
-  if (!/^[A-Za-z_$][0-9A-Za-z_$\.]*$/.test(callback)) {
+  if (!/^[A-Za-z_$][0-9A-Za-z_$\\.]*$/.test(callback)) {
     return ContentService.createTextOutput("Invalid callback.").setMimeType(ContentService.MimeType.TEXT);
   }
   const sh = mainSheet_().sh;
@@ -118,6 +118,25 @@ function publicParticipantsJsonp_(e) {
   if (!c.name || !c.hindiName || !c.school) {
     throw new Error("Public directory requires English name, Hindi name and Vidyalaya columns in PRTM ADI.");
   }
+  // Resolve each value from the first matching header that actually has data.
+  // This handles sheets where both Employee Code and Code, or YOJ and
+  // Year of Joining in KVS, exist but only one column is populated.
+  const headers = data[0];
+  function valueFromAliases(row, aliases) {
+    const wanted = aliases.map(normalized_);
+    for (let col = 0; col < headers.length; col++) {
+      if (wanted.includes(normalized_(headers[col]))) {
+        const value = String(row[col] || "").trim();
+        if (value) return value;
+      }
+    }
+    return "";
+  }
+  function yearValue(row) {
+    const raw = valueFromAliases(row, ["Year of Joining in KVS","Year of Joining","KVS Joining Year","Sangathan Joining Year","Year of Joining in Sangathan","Date of Joining","Joining Date","YOJ","संगठन में कार्यग्रहण का वर्ष"]);
+    const match = raw.match(/(19|20)\\d{2}/);
+    return match ? match[0] : raw;
+  }
   const output = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -125,14 +144,15 @@ function publicParticipantsJsonp_(e) {
     const hindiName = String(row[c.hindiName - 1] || "").trim();
     const school = String(row[c.school - 1] || "").trim();
     if (!name && !hindiName && !school) continue;
+    const designationCol = c.find(["Designation","Post","Post Held","पदनाम"]);
     output.push({
       name: name,
       hi: hindiName,
       school: school,
-      schoolHi: c.schoolHi ? String(row[c.schoolHi - 1] || "").trim() : "",
-      employeeCode: c.employee ? String(row[c.employee - 1] || "").trim() : "",
-      joiningYear: (function(){ var j=c.find(["Year of Joining","Year of Joining in KVS","KVS Joining Year","Sangathan Joining Year","Year of Joining in Sangathan","Date of Joining","Joining Date","संगठन में कार्यग्रहण का वर्ष"]); var v=j?String(row[j-1]||"").trim():""; var m=v.match(/(19|20)\d{2}/); return m?m[0]:v; })(),
-      designation: c.find(["Designation","Post","Post Held"," पदनाम"]) ? String(row[c.find(["Designation","Post","Post Held","पदनाम"]) - 1] || "").trim() : "PRT (Music)",
+      schoolHi: valueFromAliases(row, ["Vidyalaya Name Hindi","Hindi Vidyalaya","School Name Hindi","Vidyalaya Hindi","विद्यालय का नाम","विद्यालय का नाम हिंदी में","विद्यालय का हिंदी नाम","विद्यालय का नाम (हिंदी)","विद्यालय"]),
+      employeeCode: valueFromAliases(row, ["Employee Code","Employee ID","Emp Code","Employee No","Code","कर्मचारी कोड"]),
+      joiningYear: yearValue(row),
+      designation: designationCol ? String(row[designationCol - 1] || "").trim() : "PRT (Music)",
       salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
       salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
     });
