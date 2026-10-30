@@ -155,49 +155,105 @@ function submitIdentityCorrectionRequest(data) {
   const newEmail = clean(data.newEmail).toLowerCase();
   const reason = clean(data.reason);
   if (clean(data.website)) return {ok:true,message:"Your request has been received."};
-  if (!name || !school || (!newEmployeeCode && !newEmail)) throw new Error("Please enter your name, Vidyalaya, and the corrected Employee Code or new email.");
+  if (!name || !school || (!newEmployeeCode && !newEmail)) {
+    throw new Error("Please enter your full name, Vidyalaya, and the corrected Employee Code or new email.");
+  }
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (currentEmail && !emailPattern.test(currentEmail)) throw new Error("Please enter a valid current email address.");
   if (newEmail && !emailPattern.test(newEmail)) throw new Error("Please enter a valid new email address.");
+  if (newEmployeeCode && /\s/.test(newEmployeeCode)) throw new Error("Employee Code must not contain spaces.");
+
   const {ss,sh} = mainSheet_();
   const cols = columns_(sh);
   if (!cols.employee || !cols.email || !cols.name || !cols.school) {
-    throw new Error("The master sheet must contain Employee Code, Email, Name and Vidyalaya columns. No changes were made.");
+    throw new Error("Required columns were not found in PRTM ADI. Check the header row for Employee Code, Email, Name and Vidyalaya. No changes were made.");
   }
   const rows = sh.getDataRange().getDisplayValues();
-  const key = v => normalized_(v);
+  const normalizeName = v => normalized_(String(v || "")
+    .replace(/^(Dr\.?|Shri|Sh\.?|Smt\.?|Mrs\.?|Ms\.?|Mr\.?|Km\.?)[\s.]*/i, "")
+    .replace(/^(डॉ\.?|श्रीमती|श्री|सुश्री)[\s.]*/, ""));
+  const normalizeSchool = v => normalized_(v);
+  const wantedName = normalizeName(name);
+  const wantedSchool = normalizeSchool(school);
+  if (!wantedName || !wantedSchool) throw new Error("Name and Vidyalaya must contain valid text.");
+
   const matches = [];
   for (let i=1; i<rows.length; i++) {
-    const row=rows[i];
-    const nameMatch = key(row[cols.name-1]) === key(name);
-    const schoolMatch = key(row[cols.school-1]) === key(school) ||
-      key(row[cols.school-1]).includes(key(school)) || key(school).includes(key(row[cols.school-1]));
-    const codeMatch = !currentEmployeeCode || String(row[cols.employee-1]).trim() === currentEmployeeCode;
-    const emailMatch = !currentEmail || String(row[cols.email-1]).trim().toLowerCase() === currentEmail;
+    const row = rows[i];
+    const rowName = normalizeName(row[cols.name-1]);
+    const rowSchool = normalizeSchool(row[cols.school-1]);
+    const nameMatch = rowName === wantedName;
+    const schoolMatch = rowSchool === wantedSchool ||
+      (rowSchool.length >= 5 && wantedSchool.length >= 5 &&
+       (rowSchool.includes(wantedSchool) || wantedSchool.includes(rowSchool)));
+    const codeMatch = !currentEmployeeCode ||
+      String(row[cols.employee-1]).trim().toLowerCase() === currentEmployeeCode.toLowerCase();
+    const emailMatch = !currentEmail ||
+      String(row[cols.email-1]).trim().toLowerCase() === currentEmail;
     if (nameMatch && schoolMatch && codeMatch && emailMatch) matches.push(i+1);
   }
   if (matches.length !== 1) {
-    throw new Error(matches.length ? "More than one master-sheet record matched. No changes were made; contact the coordinator." :
-      "No unique master-sheet record matched the name, Vidyalaya, current Employee Code and current email. No changes were made.");
+    throw new Error(matches.length
+      ? "More than one master-sheet record matched. No changes were made. Add the current Employee Code or registered email to identify the record."
+      : "No unique record matched in PRTM ADI. Check the spelling of the name and Vidyalaya, and enter the current Employee Code or registered email if available. No changes were made.");
   }
-  const rowNumber=matches[0];
-  if (newEmployeeCode) {
-    const duplicate = rows.some((row,i)=>i>0 && i+1!==rowNumber && String(row[cols.employee-1]).trim()===newEmployeeCode);
-    if (duplicate) throw new Error("That Employee Code already belongs to another record. No changes were made.");
+  const rowNumber = matches[0];
+  const oldCode = String(rows[rowNumber-1][cols.employee-1] || "").trim();
+  const oldEmail = String(rows[rowNumber-1][cols.email-1] || "").trim().toLowerCase();
+  const wantedCode = newEmployeeCode;
+  const wantedEmail = newEmail;
+
+  if (wantedCode) {
+    const duplicate = rows.some((row,i) => i > 0 && i+1 !== rowNumber &&
+      String(row[cols.employee-1] || "").trim().toLowerCase() === wantedCode.toLowerCase());
+    if (duplicate) throw new Error("That Employee Code already belongs to another participant. No changes were made.");
   }
-  if (newEmail) {
-    const duplicate = rows.some((row,i)=>i>0 && i+1!==rowNumber && String(row[cols.email-1]).trim().toLowerCase()===newEmail);
-    if (duplicate) throw new Error("That email address already belongs to another record. No changes were made.");
+  if (wantedEmail) {
+    const duplicate = rows.some((row,i) => i > 0 && i+1 !== rowNumber &&
+      String(row[cols.email-1] || "").trim().toLowerCase() === wantedEmail);
+    if (duplicate) throw new Error("That email address already belongs to another participant. No changes were made.");
   }
-  if (newEmployeeCode) sh.getRange(rowNumber,cols.employee).setNumberFormat("@").setValue(newEmployeeCode);
-  if (newEmail) sh.getRange(rowNumber,cols.email).setValue(newEmail);
+
   const tabName = "Identity Correction Requests";
-  let log=ss.getSheetByName(tabName);
-  const headers=["Timestamp","Full Name","Vidyalaya","Current Employee Code","Current Registered Email","Requested Employee Code","Requested New Email","Reason","Status","Master Sheet Row"];
-  if (!log) { log=ss.insertSheet(tabName); log.appendRow(headers); log.setFrozenRows(1); }
-  else if (log.getLastRow()===0) { log.appendRow(headers); log.setFrozenRows(1); }
-  log.appendRow([new Date(),name,school,currentEmployeeCode,currentEmail,newEmployeeCode,newEmail,reason,"Automatically updated master sheet",rowNumber]);
-  return {ok:true,message:"Employee Code / email updated in the master sheet successfully."};
+  let log = ss.getSheetByName(tabName);
+  const headers = ["Timestamp","Full Name","Vidyalaya","Current Employee Code","Current Registered Email","Requested Employee Code","Requested New Email","Reason","Status","Master Sheet Row"];
+  if (!log) {
+    log = ss.insertSheet(tabName);
+    log.getRange(1,1,1,headers.length).setValues([headers]);
+    log.setFrozenRows(1);
+  } else if (log.getLastRow() === 0) {
+    log.getRange(1,1,1,headers.length).setValues([headers]);
+    log.setFrozenRows(1);
+  }
+
+  // Record the attempt before editing, so every accepted request has an audit trail.
+  const logRow = log.getLastRow() + 1;
+  log.getRange(logRow,1,1,headers.length).setValues([[
+    new Date(),name,school,currentEmployeeCode,currentEmail,newEmployeeCode,newEmail,reason,
+    "Update in progress",rowNumber
+  ]]);
+  SpreadsheetApp.flush();
+
+  try {
+    if (wantedCode) sh.getRange(rowNumber,cols.employee).setNumberFormat("@").setValue(wantedCode);
+    if (wantedEmail) sh.getRange(rowNumber,cols.email).setValue(wantedEmail);
+    SpreadsheetApp.flush();
+    const check = sh.getRange(rowNumber,1,1,sh.getLastColumn()).getDisplayValues()[0];
+    if (wantedCode && String(check[cols.employee-1]).trim() !== wantedCode) {
+      throw new Error("Google Sheets did not confirm the Employee Code change.");
+    }
+    if (wantedEmail && String(check[cols.email-1]).trim().toLowerCase() !== wantedEmail) {
+      throw new Error("Google Sheets did not confirm the email change.");
+    }
+    log.getRange(logRow,9).setValue("Successfully updated master sheet");
+    log.getRange(logRow,10).setValue(rowNumber);
+    SpreadsheetApp.flush();
+    return {ok:true,message:"Correction saved successfully. The master sheet and Identity Correction Requests log have both been updated."};
+  } catch (err) {
+    log.getRange(logRow,9).setValue("Update failed: " + clean(err.message || err));
+    SpreadsheetApp.flush();
+    throw new Error("The request was logged, but the master-sheet update could not be confirmed: " + String(err.message || err));
+  }
 }
 function sendProfileOtp(employeeCode, registeredEmail) {
   employeeCode = String(employeeCode || "").trim();
