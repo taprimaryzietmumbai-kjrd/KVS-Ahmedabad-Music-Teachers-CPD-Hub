@@ -10,6 +10,35 @@ const OTP_TTL_SECONDS = 300;
 const SESSION_TTL_SECONDS = 900;
 const MAX_OTP_ATTEMPTS = 5;
 
+
+/**
+ * Receive public-directory correction requests from the Participants' Hub.
+ * Requests are logged for coordinator verification; the master participant row is not changed automatically.
+ */
+function doPost(e) {
+  try {
+    const payloadText = e && e.parameter ? String(e.parameter.payload || "") : "";
+    if (!payloadText) throw new Error("No correction details were received.");
+    const p = JSON.parse(payloadText);
+    const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
+    const {ss} = mainSheet_();
+    const tabName = "Correction Submissions";
+    let log = ss.getSheetByName(tabName);
+    if (!log) {
+      log = ss.insertSheet(tabName);
+      log.appendRow(["Timestamp","Participant ID","Previous English Salutation","Previous English Name","Previous Hindi Salutation","Previous Hindi Name","Previous School","Previous School Hindi","Previous Year of Joining","Requested English Salutation","Requested English Name","Requested Hindi Salutation","Requested Hindi Name","Requested School","Requested School Hindi","Requested Year of Joining","Status"]);
+      log.setFrozenRows(1);
+    } else if (log.getLastRow() === 0) {
+      log.appendRow(["Timestamp","Participant ID","Previous English Salutation","Previous English Name","Previous Hindi Salutation","Previous Hindi Name","Previous School","Previous School Hindi","Previous Year of Joining","Requested English Salutation","Requested English Name","Requested Hindi Salutation","Requested Hindi Name","Requested School","Requested School Hindi","Requested Year of Joining","Status"]);
+      log.setFrozenRows(1);
+    }
+    log.appendRow([new Date(),clean(p.participantId),clean(p.previousSalutationEn),clean(p.previousName),clean(p.previousSalutationHi),clean(p.previousHi),clean(p.previousSchool),clean(p.previousSchoolHi),clean(p.previousJoiningYear),clean(p.salutationEn),clean(p.name),clean(p.salutationHi),clean(p.hi),clean(p.school),clean(p.schoolHi),clean(p.joiningYear),"Pending coordinator verification"]);
+    return ContentService.createTextOutput("Correction request received. Pending coordinator verification.").setMimeType(ContentService.MimeType.TEXT);
+  } catch (err) {
+    return ContentService.createTextOutput("Correction request could not be recorded: " + String(err.message || err)).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
 function doGet(e) {
   const page = e && e.parameter ? String(e.parameter.page || "") : "";
   if (page === "hostel") {
