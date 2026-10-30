@@ -253,7 +253,7 @@ function submitHostelPreference(data) {
   const birth=new Date(dob+"T00:00:00");
   if(isNaN(birth.getTime()) || birth > new Date()) throw new Error("Please enter a valid date of birth.");
   const age=Math.floor((Date.now()-birth.getTime())/31557600000);
-  if(floor==="Ground Floor" && disability!=="Yes" && age<60) throw new Error("Ground-floor preference is restricted to Divyang participants or senior-most participants (provisional age criterion: 60+). Please select another floor or provide eligible status.");
+  
   let fileUrl="";
   if(floor==="Ground Floor") {
     if(!data.document || !data.document.base64 || !data.document.name) throw new Error("Please upload genuine supporting documentation for a ground-floor allotment request.");
