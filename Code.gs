@@ -151,3 +151,43 @@ function savePrivateProfile(token, data) {
   log.appendRow([new Date(),s.employeeCode,"OTP verified profile update",Object.keys(data).join(", ")]);
   return {ok:true,message:"Your profile corrections have been saved to the main sheet."};
 }
+
+/**
+ * Share verified contact details with the course coordinator.
+ * This does not modify the participant's master record.
+ * The participant must explicitly click the sharing button after OTP verification.
+ */
+function shareContactWithCoordinator(token) {
+  const cached = CacheService.getScriptCache().get("profile-session-" + String(token || ""));
+  if (!cached) throw new Error("Your session has expired. Please verify by OTP again.");
+  const session = JSON.parse(cached);
+  const {ss, sh} = mainSheet_();
+  const c = columns_(sh);
+  const row = sh.getRange(session.row, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+  const val = col => col ? row[col - 1] : "";
+  const employeeCode = val(c.employee);
+  const email = val(c.email);
+  const phone = val(c.phone);
+  const name = val(c.name);
+  const school = val(c.school);
+  if (!employeeCode || !email) throw new Error("Employee Code or registered email is missing from the main sheet. Please contact the coordinator.");
+  const logName = "Coordinator Contact Sharing";
+  let log = ss.getSheetByName(logName);
+  if (!log) {
+    log = ss.insertSheet(logName);
+    log.appendRow(["Shared At", "Participant Name", "Employee Code", "Registered Email", "Phone Number", "Vidyalaya", "Consent"]);
+    log.setFrozenRows(1);
+  }
+  log.appendRow([new Date(), name, employeeCode, email, phone, school, "Participant explicitly consented after OTP verification"]);
+  MailApp.sendEmail({
+    to: "taprimaryzietmumbai@gmail.com",
+    subject: "Participant contact details shared — ZIET Music Teachers CPD",
+    body: "A participant has explicitly chosen to share their contact details with the course coordinator after OTP verification.\n\nParticipant: " + name +
+      "\nEmployee Code: " + employeeCode +
+      "\nRegistered Email: " + email +
+      "\nPhone Number: " + (phone || "Not provided") +
+      "\nVidyalaya: " + (school || "Not provided") +
+      "\n\nThe participant's main record was not changed by this sharing action. The sharing event is recorded in the '" + logName + "' tab."
+  });
+  return {ok:true, message:"Your contact details have been shared with the course coordinator and recorded in the Google Sheet. Your master record was not changed."};
+}
