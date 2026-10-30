@@ -18,7 +18,7 @@
 <script src="config.js"></script>
 <script>
 /* Upload settings are maintained in config.js in this GitHub repository. */
-const UPLOAD_ENDPOINT = (window.ZIET_HUB_CONFIG && window.ZIET_HUB_CONFIG.relievingOrderUploadEndpoint) || "";
+const UPLOAD_ENDPOINT = (window.ZIET_HUB_CONFIG && window.ZIET_HUB_CONFIG.relievingOrderUploadEndpoint) || "https://script.google.com/macros/s/AKfycby6GR_lWuqdcIHKsyfmJmgCaCXphZ0tFQ4iVjfsKT13Y1EvREe4s5ttx9bJ23CNrgYkrQ/exec";
 const form=document.getElementById("uploadForm"),fileInput=document.getElementById("relievingFile"),btn=document.getElementById("submitBtn"),statusBox=document.getElementById("status");
 let uploadToken="";
 function showStatus(type,message){statusBox.className="status "+type;statusBox.textContent=message;}
