@@ -21,21 +21,52 @@ function doPost(e) {
     if (!payloadText) throw new Error("No correction details were received.");
     const p = JSON.parse(payloadText);
     const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
-    const {ss} = mainSheet_();
-    const tabName = "Correction Submissions";
-    let log = ss.getSheetByName(tabName);
-    if (!log) {
-      log = ss.insertSheet(tabName);
-      log.appendRow(["Timestamp","Participant ID","Previous English Salutation","Previous English Name","Previous Hindi Salutation","Previous Hindi Name","Previous School","Previous School Hindi","Previous Year of Joining","Requested English Salutation","Requested English Name","Requested Hindi Salutation","Requested Hindi Name","Requested School","Requested School Hindi","Requested Year of Joining","Status"]);
-      log.setFrozenRows(1);
-    } else if (log.getLastRow() === 0) {
-      log.appendRow(["Timestamp","Participant ID","Previous English Salutation","Previous English Name","Previous Hindi Salutation","Previous Hindi Name","Previous School","Previous School Hindi","Previous Year of Joining","Requested English Salutation","Requested English Name","Requested Hindi Salutation","Requested Hindi Name","Requested School","Requested School Hindi","Requested Year of Joining","Status"]);
-      log.setFrozenRows(1);
+    const {ss,sh} = mainSheet_();
+    const c = columns_(sh);
+    if (!c.name || !c.hindiName || !c.school) throw new Error("The master sheet must contain English name, Hindi name and school columns.");
+    const rows = sh.getDataRange().getDisplayValues();
+    const oldName = clean(p.previousName);
+    const oldSchool = clean(p.previousSchool);
+    const oldHindi = clean(p.previousHi);
+    const matches = [];
+    for (let i=1; i<rows.length; i++) {
+      const row=rows[i];
+      if (clean(row[c.name-1])===oldName &&
+          clean(row[c.school-1])===oldSchool &&
+          clean(row[c.hindiName-1])===oldHindi) matches.push(i+1);
     }
-    log.appendRow([new Date(),clean(p.participantId),clean(p.previousSalutationEn),clean(p.previousName),clean(p.previousSalutationHi),clean(p.previousHi),clean(p.previousSchool),clean(p.previousSchoolHi),clean(p.previousJoiningYear),clean(p.salutationEn),clean(p.name),clean(p.salutationHi),clean(p.hi),clean(p.school),clean(p.schoolHi),clean(p.joiningYear),"Pending coordinator verification"]);
-    return ContentService.createTextOutput("Correction request received. Pending coordinator verification.").setMimeType(ContentService.MimeType.TEXT);
+    if (matches.length !== 1) throw new Error(matches.length ? "More than one matching participant was found. No changes were made; please contact the coordinator." : "The participant's existing name, Hindi name and school did not match the master sheet. No changes were made.");
+    const rowNumber=matches[0];
+    const getOrAddCol=(current,header)=>{
+      if(current) return current;
+      const col=sh.getLastColumn()+1;
+      sh.getRange(1,col).setValue(header);
+      return col;
+    };
+    const salEnCol=getOrAddCol(c.salutationEn,"English Salutation");
+    const salHiCol=getOrAddCol(c.salutationHi,"Hindi Salutation");
+    const joiningCol=getOrAddCol(c.find(["Year of Joining","Year of Joining in KVS","KVS Joining Year","Sangathan Joining Year","संगठन में कार्यग्रहण का वर्ष"]), "Year of Joining in KVS");
+    const year=clean(p.joiningYear);
+    if (year && !/^\d{4}$/.test(year)) throw new Error("Year of Joining must be a four-digit year.");
+    const updates=[
+      [salEnCol,clean(p.salutationEn)],
+      [c.name,clean(p.name)],
+      [salHiCol,clean(p.salutationHi)],
+      [c.hindiName,clean(p.hi)],
+      [c.school,clean(p.school)]
+    ];
+    if(c.schoolHi) updates.push([c.schoolHi,clean(p.schoolHi)]);
+    if(year) updates.push([joiningCol,year]);
+    updates.forEach(([col,value])=>sh.getRange(rowNumber,col).setValue(value));
+    const tabName="Correction Submissions";
+    let log=ss.getSheetByName(tabName);
+    const headers=["Timestamp","Participant ID","Previous English Salutation","Previous English Name","Previous Hindi Salutation","Previous Hindi Name","Previous School","Previous School Hindi","Previous Year of Joining","Updated English Salutation","Updated English Name","Updated Hindi Salutation","Updated Hindi Name","Updated School","Updated School Hindi","Updated Year of Joining","Status","Master Sheet Row"];
+    if(!log){log=ss.insertSheet(tabName);log.appendRow(headers);log.setFrozenRows(1);}
+    else if(log.getLastRow()===0){log.appendRow(headers);log.setFrozenRows(1);}
+    log.appendRow([new Date(),clean(p.participantId),clean(p.previousSalutationEn),oldName,clean(p.previousSalutationHi),oldHindi,oldSchool,clean(p.previousSchoolHi),clean(p.previousJoiningYear),clean(p.salutationEn),clean(p.name),clean(p.salutationHi),clean(p.hi),clean(p.school),clean(p.schoolHi),year,"Automatically updated master sheet",rowNumber]);
+    return ContentService.createTextOutput("Correction saved directly to the master sheet.").setMimeType(ContentService.MimeType.TEXT);
   } catch (err) {
-    return ContentService.createTextOutput("Correction request could not be recorded: " + String(err.message || err)).setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput("Correction could not be saved: " + String(err.message || err)).setMimeType(ContentService.MimeType.TEXT);
   }
 }
 
