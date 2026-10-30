@@ -40,5 +40,5 @@ function resultPage_(ok, token, message) {
   var html = '<!doctype html><html><head><meta charset="utf-8"></head><body><script>' +
     'window.top.postMessage(' + data + ', "*");' +
     '</script>Upload response processed.</body></html>';
-  return HtmlService.createHtmlOutput(html);
+  return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
