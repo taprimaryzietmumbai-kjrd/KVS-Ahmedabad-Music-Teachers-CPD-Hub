@@ -65,9 +65,6 @@ function sendProfileOtp(employeeCode, registeredEmail) {
   registeredEmail = String(registeredEmail || "").trim().toLowerCase();
   if (!employeeCode || !registeredEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registeredEmail)) throw new Error("Enter your Employee Code and registered email address.");
   const cache = CacheService.getScriptCache();
-  const throttleKey = "otp-rate-" + Utilities.base64EncodeWebSafe(employeeCode.toLowerCase()+"|"+registeredEmail).slice(0,70);
-  const sent = Number(cache.get(throttleKey) || 0);
-  if (sent >= 3) throw new Error("Too many OTP requests. Please wait 15 minutes and try again.");
   const {sh} = mainSheet_();
   const cols = columns_(sh);
   const row = findEmployeeRow_(sh, cols, employeeCode, registeredEmail);
@@ -75,7 +72,6 @@ function sendProfileOtp(employeeCode, registeredEmail) {
   const otp = String(Math.floor(100000 + Math.random()*900000));
   const key = "otp-" + Utilities.base64EncodeWebSafe(employeeCode.toLowerCase()+"|"+registeredEmail).slice(0,70);
   cache.put(key, JSON.stringify({hash:Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, otp).map(b=>(b+256).toString(16).slice(-2)).join(""), row:row, attempts:0}), OTP_TTL_SECONDS);
-  cache.put(throttleKey, String(sent+1), 900);
   MailApp.sendEmail({
     to:registeredEmail,
     subject:"Your ZIET Participant Hub verification code",
