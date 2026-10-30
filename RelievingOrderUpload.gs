@@ -37,8 +37,13 @@ function doPost(e) {
 function resultPage_(ok, token, message) {
   var data = JSON.stringify({type:"RELIEVING_ORDER_UPLOAD_RESULT", ok:ok, token:token, message:message})
     .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
+  // Notify the embedding upload page. Apps Script may wrap responses in
+  // an additional sandbox frame, so notify parent and top when available.
   var html = '<!doctype html><html><head><meta charset="utf-8"></head><body><script>' +
-    'window.top.postMessage(' + data + ', "*");' +
+    '(function(){var d=' + data + ';' +
+    'try{if(window.parent&&window.parent!==window){window.parent.postMessage(d,"*");}}catch(e){}' +
+    'try{if(window.top&&window.top!==window.parent){window.top.postMessage(d,"*");}}catch(e){}' +
+    '})();' +
     '</script>Upload response processed.</body></html>';
   return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
