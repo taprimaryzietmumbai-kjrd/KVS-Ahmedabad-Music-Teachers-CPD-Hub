@@ -8,7 +8,7 @@
 <div class="privacy">OTP केवल मुख्य Google Sheet में पहले से दर्ज ईमेल पते पर भेजा जाएगा। अपना Employee Code और पंजीकृत ईमेल दर्ज करें। OTP किसी के साथ साझा न करें।</div>
 <section id="identityRequest" style="margin:18px 0;padding:16px;border:1px solid #d8e2f0;border-radius:12px;background:#f8faff">
 <h2>Request Employee Code / Email Correction</h2>
-<p class="note">यदि आपका Employee Code या पंजीकृत ईमेल गलत है, या पुराने ईमेल तक पहुँच नहीं है, तो नीचे अनुरोध भेजें। यह फ़ॉर्म मास्टर रिकॉर्ड में सीधे बदलाव नहीं करेगा; समन्वयक सत्यापन के बाद सुधार करेंगे।</p>
+<p class="note">यदि आपका Employee Code या पंजीकृत ईमेल गलत है, तो नीचे सही विवरण भेजें। सफल सत्यापन के बाद रिकॉर्ड मास्टर शीट में सीधे अपडेट होगा और बदलाव का लॉग दर्ज किया जाएगा। यदि रिकॉर्ड की पहचान स्पष्ट न हो, तो कोई बदलाव नहीं होगा और कारण दिखाया जाएगा।</p>
 <div class="grid">
 <label>पूरा नाम / Full Name<input id="reqName" autocomplete="name" required></label>
 <label>विद्यालय / Vidyalaya<input id="reqSchool" required></label>
@@ -20,7 +20,7 @@
 <label style="display:none">Leave blank<input id="reqWebsite" tabindex="-1" autocomplete="off"></label>
 </div>
 <div class="row"><button id="submitIdentityRequest">Submit Correction Request / अनुरोध भेजें</button></div>
-<p class="note">अनुरोध समन्वयक को ईमेल किया जाएगा और Google Sheet में अलग लॉग के रूप में दर्ज होगा। कृपया कोई OTP या पासवर्ड न भेजें।</p>
+<p class="note">सफल अपडेट पर स्क्रीन पर पुष्टि दिखाई देगी और Google Sheet के Identity Correction Requests टैब में स्थिति दर्ज होगी। कृपया कोई OTP या पासवर्ड न भेजें।</p>
 </section>
 <section id="step1"><h2>1. Verify your identity / पहचान सत्यापित करें</h2><div class="grid"><label>Employee Code<input id="employeeCode" autocomplete="off" required></label><label>Registered Email / पंजीकृत ईमेल<input id="registeredEmail" type="email" autocomplete="email" required></label></div><div class="row"><button id="sendOtp">Send OTP / OTP भेजें</button></div></section>
 <section id="step2" class="hidden"><h2>2. Enter OTP / OTP दर्ज करें</h2><label>6-digit OTP<input id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label><div class="row"><button id="verifyOtp">Verify OTP / सत्यापित करें</button><button id="back" class="secondary">Back</button></div></section>
@@ -41,8 +41,8 @@
 let sessionToken="";
 const $=id=>document.getElementById(id);
 function status(msg,err=false){$("status").textContent=msg;$("status").className="status show "+(err?"err":"ok")}
-function callServer(fn,args,done){google.script.run.withSuccessHandler(done).withFailureHandler(e=>status(e&&e.message?e.message:"Something went wrong. Please try again.",true))[fn](...args)}
-$("submitIdentityRequest").onclick=()=>{const data={name:$("reqName").value.trim(),school:$("reqSchool").value.trim(),currentEmployeeCode:$("reqCurrentCode").value.trim(),currentEmail:$("reqCurrentEmail").value.trim(),newEmployeeCode:$("reqNewCode").value.trim(),newEmail:$("reqNewEmail").value.trim(),reason:$("reqReason").value.trim(),website:$("reqWebsite").value.trim()};if(!data.name||!data.school||(!data.newEmployeeCode&&!data.newEmail)){status("कृपया नाम, विद्यालय और सही Employee Code या नया ईमेल भरें।",true);return}if(data.newEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.newEmail)){status("कृपया सही नया ईमेल पता दर्ज करें।",true);return}const btn=$("submitIdentityRequest");btn.disabled=true;callServer("submitIdentityCorrectionRequest",[data],r=>{status(r.message);btn.disabled=false;["reqName","reqSchool","reqCurrentCode","reqCurrentEmail","reqNewCode","reqNewEmail","reqReason"].forEach(id=>$(id).value="")})};
+function callServer(fn,args,done,failed){google.script.run.withSuccessHandler(done).withFailureHandler(e=>{status(e&&e.message?e.message:"Something went wrong. Please try again.",true);if(typeof failed==="function")failed(e)})[fn](...args)}
+$("submitIdentityRequest").onclick=()=>{const data={name:$("reqName").value.trim(),school:$("reqSchool").value.trim(),currentEmployeeCode:$("reqCurrentCode").value.trim(),currentEmail:$("reqCurrentEmail").value.trim(),newEmployeeCode:$("reqNewCode").value.trim(),newEmail:$("reqNewEmail").value.trim(),reason:$("reqReason").value.trim(),website:$("reqWebsite").value.trim()};if(!data.name||!data.school||(!data.newEmployeeCode&&!data.newEmail)){status("कृपया नाम, विद्यालय और सही Employee Code या नया ईमेल भरें।",true);return}if(data.newEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.newEmail)){status("कृपया सही नया ईमेल पता दर्ज करें।",true);return}const btn=$("submitIdentityRequest");btn.disabled=true;callServer("submitIdentityCorrectionRequest",[data],r=>{status(r.message);btn.disabled=false;["reqName","reqSchool","reqCurrentCode","reqCurrentEmail","reqNewCode","reqNewEmail","reqReason"].forEach(id=>$(id).value="")},()=>{btn.disabled=false})};
 $("sendOtp").onclick=()=>{const ec=$("employeeCode").value.trim(),email=$("registeredEmail").value.trim();if(!ec||!email){status("Enter Employee Code and registered email.",true);return}$("sendOtp").disabled=true;callServer("sendProfileOtp",[ec,email],r=>{status(r.message);$("step2").classList.remove("hidden");$("sendOtp").disabled=false})};
 $("back").onclick=()=>{$("step2").classList.add("hidden");$("otp").value=""};
 $("verifyOtp").onclick=()=>{const ec=$("employeeCode").value.trim(),email=$("registeredEmail").value.trim(),otp=$("otp").value.trim();if(!otp){status("Enter the OTP.",true);return}callServer("verifyProfileOtp",[ec,email,otp],r=>{sessionToken=r.token;status(r.message);$("step1").classList.add("hidden");$("step2").classList.add("hidden");$("profile").classList.remove("hidden");callServer("getPrivateProfile",[sessionToken],fillProfile)})};
