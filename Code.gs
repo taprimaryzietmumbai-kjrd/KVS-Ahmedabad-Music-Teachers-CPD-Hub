@@ -13,7 +13,7 @@ const MAX_OTP_ATTEMPTS = 5;
 
 /**
  * Receive public-directory correction requests from the Participants' Hub.
- * Requests are logged for coordinator verification; the master participant row is not changed automatically.
+ * Receives public-directory correction requests and updates the matched master participant row.
  */
 function doPost(e) {
   try {
@@ -31,9 +31,15 @@ function doPost(e) {
     const matches = [];
     for (let i=1; i<rows.length; i++) {
       const row=rows[i];
-      if (clean(row[c.name-1])===oldName &&
-          clean(row[c.school-1])===oldSchool &&
-          clean(row[c.hindiName-1])===oldHindi) matches.push(i+1);
+      const sheetName = normalized_(row[c.name-1]);
+      const formName = normalized_(oldName);
+      const sheetHindi = normalized_(row[c.hindiName-1]);
+      const formHindi = normalized_(oldHindi);
+      const nameMatches = sheetName === formName || sheetName.endsWith(formName) || formName.endsWith(sheetName);
+      const hindiMatches = sheetHindi === formHindi || sheetHindi.endsWith(formHindi) || formHindi.endsWith(sheetHindi);
+      if (nameMatches &&
+          normalized_(row[c.school-1])===normalized_(oldSchool) &&
+          hindiMatches) matches.push(i+1);
     }
     if (matches.length !== 1) throw new Error(matches.length ? "More than one matching participant was found. No changes were made; please contact the coordinator." : "The participant's existing name, Hindi name and school did not match the master sheet. No changes were made.");
     const rowNumber=matches[0];
