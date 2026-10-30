@@ -10,7 +10,13 @@ const OTP_TTL_SECONDS = 300;
 const SESSION_TTL_SECONDS = 900;
 const MAX_OTP_ATTEMPTS = 5;
 
-function doGet() {
+function doGet(e) {
+  const page = e && e.parameter ? String(e.parameter.page || "") : "";
+  if (page === "hostel") {
+    return HtmlService.createHtmlOutputFromFile("Hostel")
+      .setTitle("Hostel Room Preference — ZIET Mumbai")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  }
   return HtmlService.createHtmlOutputFromFile("Profile")
     .setTitle("ZIET Participant Personal Profile")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
@@ -230,4 +236,42 @@ function shareContactWithCoordinator(token) {
       "\n\nThe participant's main record was not changed by this sharing action. The sharing event is recorded in the '" + logName + "' tab."
   });
   return {ok:true, message:"Your contact details have been shared with the course coordinator and recorded in the Google Sheet. Your master record was not changed."};
+}
+
+
+/** Save a hostel preference and upload ground-floor evidence to the designated Drive folder. */
+function submitHostelPreference(data) {
+  data = data || {};
+  const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
+  const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email).toLowerCase();
+  const gender=clean(data.gender), block=clean(data.block), floor=clean(data.floor), toilet=clean(data.toilet);
+  const dob=clean(data.dob), disability=clean(data.disability), groundReason=clean(data.groundReason);
+  if(!name || !employeeCode || !email || !gender || !block || !floor || !toilet || !dob) throw new Error("Please complete all required fields, including date of birth.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
+  if(block==="A1" && gender!=="Female") throw new Error("Block A1 is reserved for ladies. Please choose A2 or A3.");
+  if(!["A1","A2","A3"].includes(block) || !["Ground Floor","1st Floor","2nd Floor","3rd Floor"].includes(floor) || !["Indian","Western"].includes(toilet)) throw new Error("Please choose valid room preferences.");
+  const birth=new Date(dob+"T00:00:00");
+  if(isNaN(birth.getTime()) || birth > new Date()) throw new Error("Please enter a valid date of birth.");
+  const age=Math.floor((Date.now()-birth.getTime())/31557600000);
+  if(floor==="1st Floor" && disability!=="Yes" && age<60) throw new Error("First-floor preference is restricted to Divyang participants or senior-most participants (provisional age criterion: 60+). Please select another floor or provide eligible status.");
+  let fileUrl="";
+  if(floor==="Ground Floor") {
+    if(!data.document || !data.document.base64 || !data.document.name) throw new Error("Please upload genuine supporting documentation for a ground-floor allotment request.");
+    const bytes=Utilities.base64Decode(String(data.document.base64));
+    if(bytes.length > 8*1024*1024) throw new Error("The document must be 8 MB or smaller.");
+    const mime=clean(data.document.mimeType) || "application/octet-stream";
+    const safeName=clean(data.document.name).replace(/[\\/:*?"<>|]/g,"_").slice(0,120);
+    const blob=Utilities.newBlob(bytes,mime,safeName);
+    const folder=DriveApp.getFolderById("1lYibl8qAWdiRG-fD5Fe2D8WX_Szw14vd");
+    const file=folder.createFile(blob);
+    file.setDescription("Ground-floor hostel allotment supporting document. Submitted by "+name+" ("+employeeCode+").");
+    fileUrl=file.getUrl();
+  }
+  const ss=SpreadsheetApp.openById("1pksDgeV53waKMP1pmj0CWbpP3qyAT8nrN8RhU9Y-mKE");
+  const tab="Hostel Room Preferences";
+  let sh=ss.getSheetByName(tab);
+  if(!sh){sh=ss.insertSheet(tab);sh.appendRow(["Timestamp","Full Name","Employee Code","Email","Gender for A1 eligibility","Date of Birth","Age at submission","Differently Abled","Preferred Block","Preferred Floor","Preferred Toilet","Ground Floor Reason","Supporting Document URL","Review Status"]);sh.setFrozenRows(1);}
+  sh.appendRow([new Date(),name,employeeCode,email,gender,birth,age,disability,block,floor,toilet,groundReason,fileUrl,"Pending coordinator review"]);
+  MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Hostel Room Preference Submitted — KV Music Teachers CPD",body:"A hostel preference was submitted. Please verify eligibility and allotment before confirming.\n\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\nDOB: "+dob+" (age "+age+")\nDifferently Abled: "+(disability||"Not specified")+"\nBlock: "+block+"\nFloor: "+floor+"\nToilet: "+toilet+"\nGround-floor reason: "+(groundReason||"Not provided")+"\nSupporting document: "+(fileUrl||"Not uploaded")});
+  return {ok:true,message:"Hostel preference submitted successfully. Allotment is subject to coordinator verification. "+(fileUrl ? "Supporting document uploaded to the designated Drive folder." : "")};
 }
