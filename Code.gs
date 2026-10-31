@@ -450,21 +450,31 @@ function shareContactWithCoordinator(token) {
 }
 
 
-/** Save a hostel preference and upload ground-floor evidence to the designated Drive folder. */
+/** Save hostel preferences and arrival-facilitation details; upload ground-floor evidence when required. */
 function submitHostelPreference(data) {
   data = data || {};
   const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
   const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email).toLowerCase();
   const gender=clean(data.gender), block=clean(data.block), floor=clean(data.floor);
   const dob=clean(data.dob), disability=clean(data.disability), groundReason=clean(data.groundReason);
+  const arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal), trainTerminal=clean(data.trainTerminal);
+  const otherStation=clean(data.otherStation), busArrival=clean(data.busArrival);
+  const arrivalMumbaiTime=clean(data.arrivalMumbaiTime), arrivalHostelTime=clean(data.arrivalHostelTime), arrivalHostelBlock=clean(data.arrivalHostelBlock);
   if(!name || !employeeCode || !email || !gender || !block || !floor || !dob) throw new Error("Please complete all required fields, including date of birth.");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
   if(block==="A1" && gender!=="Female") throw new Error("Block A1 is reserved for ladies. Please choose A2 or A3.");
   if(!["A1","A2","A3"].includes(block) || !["Ground Floor","1st Floor","2nd Floor","3rd Floor"].includes(floor)) throw new Error("Please choose valid room preferences.");
+  if(!["Train","Flight","Bus"].includes(arrivalMode)) throw new Error("Please select your mode of arrival.");
+  if(arrivalMode==="Flight" && !["CSMIA-T1","CSMIA-T2","NMIA"].includes(flightTerminal)) throw new Error("Please select your arrival airport terminal.");
+  if(arrivalMode==="Train" && !["Bandra Terminus","Dadar","Mumbai Central","Borivali","CSMT","Thane","Any other"].includes(trainTerminal)) throw new Error("Please select your arriving railway station.");
+  if(arrivalMode==="Train" && trainTerminal==="Any other" && !otherStation) throw new Error("Please specify the other railway station.");
+  if(arrivalMode==="Bus" && !busArrival) throw new Error("Please enter your bus arrival point.");
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalMumbaiTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalHostelTime)) throw new Error("Please select both expected arrival times.");
+  if(!["A1","A2","A3"].includes(arrivalHostelBlock)) throw new Error("Please select the hostel block you expect to arrive at.");
   const birth=new Date(dob+"T00:00:00");
   if(isNaN(birth.getTime()) || birth > new Date()) throw new Error("Please enter a valid date of birth.");
   const age=Math.floor((Date.now()-birth.getTime())/31557600000);
-  
+
   let fileUrl="";
   if(floor==="Ground Floor") {
     if(!data.document || !data.document.base64 || !data.document.name) throw new Error("Please upload genuine supporting documentation for a ground-floor allotment request.");
@@ -481,10 +491,33 @@ function submitHostelPreference(data) {
   const ss=SpreadsheetApp.openById("1pksDgeV53waKMP1pmj0CWbpP3qyAT8nrN8RhU9Y-mKE");
   const tab="Hostel Room Preferences";
   let sh=ss.getSheetByName(tab);
-  if(!sh){sh=ss.insertSheet(tab);sh.appendRow(["Timestamp","Full Name","Employee Code","Email","Gender for A1 eligibility","Date of Birth","Age at submission","Differently Abled","Preferred Block","Preferred Floor","Preferred Toilet","Ground Floor Reason","Supporting Document URL","Review Status"]);sh.setFrozenRows(1);}
-  sh.appendRow([new Date(),name,employeeCode,email,gender,birth,age,disability,block,floor,"",groundReason,fileUrl,"Pending coordinator review"]);
-  MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Hostel Room Preference Submitted — KV Music Teachers CPD",body:"A hostel preference was submitted. Please verify eligibility and allotment before confirming.\n\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\nDOB: "+dob+" (age "+age+")\nDifferently Abled: "+(disability||"Not specified")+"\nBlock: "+block+"\nFloor: "+floor+"\nGround-floor reason: "+(groundReason||"Not provided")+"\nSupporting document: "+(fileUrl||"Not uploaded")});
-  return {ok:true,message:"Hostel preference submitted successfully. Allotment is subject to coordinator verification. "+(fileUrl ? "Supporting document uploaded to the designated Drive folder." : "")};
+  const headers=["Timestamp","Full Name","Employee Code","Email","Gender for A1 eligibility","Date of Birth","Age at submission","Differently Abled","Preferred Block","Preferred Floor","Preferred Toilet","Ground Floor Reason","Supporting Document URL","Review Status","Arrival Mode","Arrival Airport Terminal","Arrival Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block"];
+  if(!sh){sh=ss.insertSheet(tab);sh.getRange(1,1,1,headers.length).setValues([headers]);sh.setFrozenRows(1);}
+  let currentHeaders=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getDisplayValues()[0].map(v=>String(v||"").trim());
+  headers.forEach(h=>{if(!currentHeaders.includes(h)){currentHeaders.push(h);sh.getRange(1,currentHeaders.length).setValue(h);}});
+  const record={
+    "Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,
+    "Gender for A1 eligibility":gender,"Date of Birth":birth,"Age at submission":age,"Differently Abled":disability,
+    "Preferred Block":block,"Preferred Floor":floor,"Preferred Toilet":"","Ground Floor Reason":groundReason,
+    "Supporting Document URL":fileUrl,"Review Status":"Pending coordinator review","Arrival Mode":arrivalMode,
+    "Arrival Airport Terminal":arrivalMode==="Flight"?flightTerminal:"",
+    "Arrival Railway Station":arrivalMode==="Train"?trainTerminal:"",
+    "Other Railway Station":arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"",
+    "Bus Arrival Point":arrivalMode==="Bus"?busArrival:"",
+    "Expected Arrival Time in Mumbai":arrivalMumbaiTime,
+    "Expected Arrival Time at ZIET Hostel":arrivalHostelTime,
+    "Arrival Hostel Block":arrivalHostelBlock
+  };
+  sh.appendRow(currentHeaders.map(h=>Object.prototype.hasOwnProperty.call(record,h)?record[h]:""));
+  const travelDetail="\n\nARRIVAL FACILITATION\nMode: "+arrivalMode+
+    (arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+
+    (arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+
+    (arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+
+    "\nExpected arrival in Mumbai: "+arrivalMumbaiTime+
+    "\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+
+    "\nHostel block for arrival: "+arrivalHostelBlock;
+  MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Hostel Preference & Arrival Facilitation — KV Music Teachers CPD",body:"A hostel preference and arrival facilitation response was submitted. Please verify eligibility and allotment before confirming.\n\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\nDOB: "+dob+" (age "+age+")\nDifferently Abled: "+(disability||"Not specified")+"\nBlock: "+block+"\nFloor: "+floor+"\nGround-floor reason: "+(groundReason||"Not provided")+"\nSupporting document: "+(fileUrl||"Not uploaded")+travelDetail+"\n\nFor further assistance: Anand Srivastava (Coordinator)."});
+  return {ok:true,message:"Hostel preference and Arrival Facilitation details submitted successfully. Allotment is subject to coordinator verification. "+(fileUrl ? "Supporting document uploaded to the designated Drive folder." : "")};
 }
 
 
