@@ -153,6 +153,7 @@ function publicParticipantsJsonp_(e) {
       employeeCode: valueFromAliases(row, ["Employee Code","Employee ID","Emp Code","Employee No","Code","कर्मचारी कोड"]),
       joiningYear: yearValue(row),
       designation: designationCol ? String(row[designationCol - 1] || "").trim() : "PRT (Music)",
+      designationHi: valueFromAliases(row, ["Hindi Designation","Designation Hindi","Post Hindi","पदनाम","हिंदी पदनाम","पदनाम हिंदी"]),
       salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
       salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
     });
