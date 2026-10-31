@@ -94,6 +94,11 @@ function doGet(e) {
       .setTitle("Hostel Room Preference — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
+  if (page === "arrival") {
+    return HtmlService.createHtmlOutputFromFile("Arrival")
+      .setTitle("Arrival Facilitation & Departure Plan — ZIET Mumbai")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  }
   return HtmlService.createHtmlOutputFromFile("Profile")
     .setTitle("ZIET Participant Personal Profile")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
@@ -160,6 +165,39 @@ function publicParticipantsJsonp_(e) {
   }
   const json = JSON.stringify(output).replace(/</g, "\\u003c");
   return ContentService.createTextOutput(callback + "(" + json + ");").setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+
+/** Save arrival and departure planning independently of hostel room preferences. */
+function submitArrivalFacilitation(data) {
+  const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
+  const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email);
+  const arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal);
+  const trainTerminal=clean(data.trainTerminal), otherStation=clean(data.otherStation), busArrival=clean(data.busArrival);
+  const arrivalMumbaiTime=clean(data.arrivalMumbaiTime), arrivalHostelTime=clean(data.arrivalHostelTime);
+  const arrivalHostelBlock=clean(data.arrivalHostelBlock), departureDate=clean(data.departureDate);
+  const departureTime=clean(data.departureTime), packedDinner=clean(data.packedDinner);
+  if(!name || !employeeCode || !email) throw new Error("Please select your participant record.");
+  if(!["Train","Flight","Bus"].includes(arrivalMode)) throw new Error("Please select your mode of arrival.");
+  if(arrivalMode==="Flight" && !["CSMIA-T1","CSMIA-T2","NMIA"].includes(flightTerminal)) throw new Error("Please select your airport terminal.");
+  if(arrivalMode==="Train" && !["Bandra Terminus","Dadar","Mumbai Central","Borivali","CSMT","Thane","Any other"].includes(trainTerminal)) throw new Error("Please select your railway station.");
+  if(arrivalMode==="Train" && trainTerminal==="Any other" && !otherStation) throw new Error("Please specify the other station.");
+  if(arrivalMode==="Bus" && !busArrival) throw new Error("Please enter your bus arrival point.");
+  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(arrivalMumbaiTime) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(arrivalHostelTime)) throw new Error("Please select both arrival times.");
+  if(!["A1","A2","A3"].includes(arrivalHostelBlock)) throw new Error("Please select the hostel block for arrival.");
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(departureDate)) throw new Error("Please select your expected departure date.");
+  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(departureTime)) throw new Error("Please select your expected departure time.");
+  if(!["YES","NO"].includes(packedDinner)) throw new Error("Please select YES or NO for the packed dinner parcel.");
+  const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
+  const tab="Arrival Facilitation";
+  let sh=ss.getSheetByName(tab);
+  const headers=["Timestamp","Full Name","Employee Code","Email","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel"];
+  if(!sh){sh=ss.insertSheet(tab);sh.appendRow(headers);sh.setFrozenRows(1);}
+  else if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);}
+  sh.appendRow([new Date(),name,employeeCode,email,arrivalMode,arrivalMode==="Flight"?flightTerminal:"",arrivalMode==="Train"?trainTerminal:"",arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"",arrivalMode==="Bus"?busArrival:"",arrivalMumbaiTime,arrivalHostelTime,arrivalHostelBlock,departureDate,departureTime,packedDinner]);
+  const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
+  MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Arrival & Departure Plan — "+name,body:"A separate Arrival Facilitation and Departure Plan was submitted.\\n\\nName: "+name+"\\nEmployee Code: "+employeeCode+"\\nEmail: "+email+"\\n\\nARRIVAL DETAILS\\n"+arrivalLines+"\\n\\nDEPARTURE DETAILS\\nExpected day of departure: "+departureDate+"\\nExpected departure time from ZIET Hostel: "+departureTime+"\\nPacked Dinner Parcel on last workshop day: "+packedDinner+"\\n\\nFor further assistance: Anand Srivastava (Coordinator)."});
+  return {ok:true,message:"Arrival and departure plan submitted successfully."};
 }
 
 function normalized_(v) {
