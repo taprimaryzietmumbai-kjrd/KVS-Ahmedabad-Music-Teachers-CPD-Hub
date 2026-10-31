@@ -196,8 +196,17 @@ function submitArrivalFacilitation(data) {
   else if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);}
   sh.appendRow([new Date(),name,employeeCode,email,arrivalMode,arrivalMode==="Flight"?flightTerminal:"",arrivalMode==="Train"?trainTerminal:"",arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"",arrivalMode==="Bus"?busArrival:"",arrivalMumbaiTime,arrivalHostelTime,arrivalHostelBlock,departureDate,departureTime,packedDinner]);
   const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
+  const pdfText = "ZIET MUMBAI — KVS AHMEDABAD REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
+  const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);
+  tempDoc.getBody().setText(pdfText);
+  tempDoc.saveAndClose();
+  const pdfBlob = DriveApp.getFileById(tempDoc.getId()).getAs(MimeType.PDF).setName("Arrival_Departure_"+employeeCode+"_"+departureDate+".pdf");
+  const arrivalFolder = DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
+  const arrivalPdf = arrivalFolder.createFile(pdfBlob);
+  arrivalPdf.setDescription("Arrival and departure plan for "+name+" ("+employeeCode+").");
+  DriveApp.getFileById(tempDoc.getId()).setTrashed(true);
   MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Arrival & Departure Plan — "+name,body:"A separate Arrival Facilitation and Departure Plan was submitted.\\n\\nName: "+name+"\\nEmployee Code: "+employeeCode+"\\nEmail: "+email+"\\n\\nARRIVAL DETAILS\\n"+arrivalLines+"\\n\\nDEPARTURE DETAILS\\nExpected day of departure: "+departureDate+"\\nExpected departure time from ZIET Hostel: "+departureTime+"\\nPacked Dinner Parcel on last workshop day: "+packedDinner+"\\n\\nFor further assistance: Anand Srivastava (Coordinator)."});
-  return {ok:true,message:"Arrival and departure plan submitted successfully."};
+  return {ok:true,message:"Arrival and departure plan submitted successfully. A PDF copy has been saved to the designated Drive folder."};
 }
 
 function normalized_(v) {
