@@ -183,10 +183,10 @@ function submitArrivalFacilitation(data) {
   if(arrivalMode==="Train" && !["Bandra Terminus","Dadar","Mumbai Central","Borivali","CSMT","Thane","Any other"].includes(trainTerminal)) throw new Error("Please select your railway station.");
   if(arrivalMode==="Train" && trainTerminal==="Any other" && !otherStation) throw new Error("Please specify the other station.");
   if(arrivalMode==="Bus" && !busArrival) throw new Error("Please enter your bus arrival point.");
-  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(arrivalMumbaiTime) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(arrivalHostelTime)) throw new Error("Please select both arrival times.");
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalMumbaiTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalHostelTime)) throw new Error("Please select both arrival times.");
   if(!["A1","A2","A3"].includes(arrivalHostelBlock)) throw new Error("Please select the hostel block for arrival.");
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(departureDate)) throw new Error("Please select your expected departure date.");
-  if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(departureTime)) throw new Error("Please select your expected departure time.");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(departureDate)) throw new Error("Please select your expected departure date.");
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(departureTime)) throw new Error("Please select your expected departure time.");
   if(!["YES","NO"].includes(packedDinner)) throw new Error("Please select YES or NO for the packed dinner parcel.");
   const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
   const tab="Arrival Facilitation";
