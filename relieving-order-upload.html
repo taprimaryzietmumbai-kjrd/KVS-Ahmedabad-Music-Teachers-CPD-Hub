@@ -18,11 +18,11 @@
 <h2 style="margin:0 0 10px;color:var(--navy)">CPD Certificate Access | CPD प्रमाणपत्र</h2>
 <p class="lead">The certificate download option will appear only after both documents have been successfully uploaded to the designated Drive folder and you confirm the submissions below.</p>
 <label style="display:flex;gap:11px;align-items:flex-start;margin:16px 0;font-weight:650;line-height:1.5;color:var(--ink)">
-<input id="confirmRelieving" type="checkbox" style="width:19px;height:19px;flex:0 0 auto;margin-top:2px">
+<input id="confirmRelieving" type="checkbox" disabled style="width:19px;height:19px;flex:0 0 auto;margin-top:2px">
 <span>I confirm that I have submitted my official Relieving Order.</span>
 </label>
 <label style="display:flex;gap:11px;align-items:flex-start;margin:16px 0;font-weight:650;line-height:1.5;color:var(--ink)">
-<input id="confirmPayment" type="checkbox" style="width:19px;height:19px;flex:0 0 auto;margin-top:2px">
+<input id="confirmPayment" type="checkbox" disabled style="width:19px;height:19px;flex:0 0 auto;margin-top:2px">
 <span>I confirm that I have shared the required Payment Screenshot.</span>
 </label>
 <button id="showCertificateBtn" type="button" disabled style="opacity:.55;cursor:not-allowed">Confirm and Show CPD Certificate Download</button>
@@ -100,7 +100,6 @@ form.addEventListener("submit",async e=>{
   btn.textContent="Both Documents Uploaded";
  }catch(err){
   btn.disabled=false;btn.textContent="Retry Document Upload";
-  confirmRelieving.disabled=false;confirmPayment.disabled=false;
   showStatus("error",err.message+" If the Relieving Order was already uploaded, it may be present in the Drive folder; avoid repeated uploads until you check with the coordinator.");
  }
 });
