@@ -11,7 +11,7 @@
 <body>
 <header class="hero"><div class="wrap"><div class="eyebrow">Kendriya Vidyalaya Sangathan · ZIET Mumbai</div><h1>Submit Required Documents to Proceed</h1><div class="hindi" lang="hi">आगे बढ़ने के लिए आवश्यक दस्तावेज़ जमा करें</div></div></header>
 <main><section class="card"><h2>Required Document Submission</h2><p class="lead">Please upload both your official Relieving Order and Payment Screenshot for the Mass Saturation CPD Training for KV Music Teachers (KVS Ahmedabad Region), 2–6 November 2026. Both files will be saved in the designated ZIET Mumbai Google Drive folder.</p>
-<form id="uploadForm"><label class="field" for="relievingFile">1. Relieving Order (PDF preferred; JPG/PNG also accepted)<input id="relievingFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required></label><label class="field" for="paymentFile">2. Payment Screenshot (PDF/JPG/PNG)<input id="paymentFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required></label><p class="small">Maximum file size: 8 MB per document. Ensure both documents are clear and readable.</p><button id="submitBtn" type="submit">Upload Both Documents</button><a class="back" href="./">Back to Participants’ Hub</a></form>
+<form id="uploadForm"><label class="field" for="employeeCode">Employee Code / कर्मचारी कोड<input id="employeeCode" type="text" inputmode="numeric" autocomplete="off" maxlength="30" required></label><label class="field" for="registeredMobile">Registered Mobile Number (with country code, e.g. +91XXXXXXXXXX)<input id="registeredMobile" type="tel" autocomplete="tel" placeholder="+91XXXXXXXXXX" required></label><label class="field" for="relievingFile">1. Relieving Order (PDF preferred; JPG/PNG also accepted)<input id="relievingFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required></label><label class="field" for="paymentFile">2. Payment Screenshot (PDF/JPG/PNG)<input id="paymentFile" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required></label><p class="small">Maximum file size: 8 MB per document. Ensure both documents are clear and readable.</p><button id="submitBtn" type="submit">Upload Both Documents</button><a class="back" href="./">Back to Participants’ Hub</a></form>
 <div id="status" class="status" role="status" aria-live="polite"></div>
 <p class="small">Both documents must upload successfully before the CPD certificate option can be revealed.</p>
 <section id="certificateGate" style="margin-top:28px;padding:20px;border:1px solid var(--line);border-radius:14px;background:#f8faff">
@@ -37,7 +37,7 @@
 <script>
 /* Upload settings are maintained in config.js in this GitHub repository. */
 const UPLOAD_ENDPOINT = (window.ZIET_HUB_CONFIG && window.ZIET_HUB_CONFIG.relievingOrderUploadEndpoint) || "https://script.google.com/macros/s/AKfycby6GR_lWuqdcIHKsyfmJmgCaCXphZ0tFQ4iVjfsKT13Y1EvREe4s5ttx9bJ23CNrgYkrQ/exec";
-const form=document.getElementById("uploadForm"),relievingInput=document.getElementById("relievingFile"),paymentInput=document.getElementById("paymentFile"),btn=document.getElementById("submitBtn"),statusBox=document.getElementById("status");
+const form=document.getElementById("uploadForm"),employeeCodeInput=document.getElementById("employeeCode"),registeredMobileInput=document.getElementById("registeredMobile"),relievingInput=document.getElementById("relievingFile"),paymentInput=document.getElementById("paymentFile"),btn=document.getElementById("submitBtn"),statusBox=document.getElementById("status");
 const confirmRelieving=document.getElementById("confirmRelieving"),confirmPayment=document.getElementById("confirmPayment"),showCertificateBtn=document.getElementById("showCertificateBtn"),certificatePanel=document.getElementById("certificatePanel");
 function updateCertificateGate(){
  const ready=confirmRelieving.checked&&confirmPayment.checked;
@@ -62,7 +62,7 @@ function postDocument(file,documentType){
   try{
    const data=await toBase64(file),token=crypto.randomUUID();
    pendingUpload={token,resolve,reject};
-   const payload={token,fileName:file.name,mimeType:file.type,fileData:data,documentType,training:"KVS Ahmedabad Music Teachers CPD Training, 2–6 November 2026"};
+   const payload={token,employeeCode:employeeCodeInput.value.trim(),mobile:registeredMobileInput.value.trim(),fileName:file.name,mimeType:file.type,fileData:data,documentType,training:"KVS Ahmedabad Music Teachers CPD Training, 2–6 November 2026"};
    const postForm=document.createElement("form");postForm.method="POST";postForm.action=UPLOAD_ENDPOINT;postForm.target="uploadResponseFrame";postForm.style.display="none";
    const field=document.createElement("input");field.name="payload";field.value=JSON.stringify(payload);postForm.appendChild(field);document.body.appendChild(postForm);postForm.submit();postForm.remove();
    setTimeout(()=>{if(pendingUpload&&pendingUpload.token===token){pendingUpload=null;reject(new Error("No upload confirmation was received. Please contact the coordinator before retrying."));}},60000);
