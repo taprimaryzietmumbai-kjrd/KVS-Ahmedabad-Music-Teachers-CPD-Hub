@@ -164,7 +164,7 @@ function publicParticipantsJsonp_(e) {
       joiningYear: yearValue(row),
       designation: designationCol ? String(row[designationCol - 1] || "").trim() : "PRT (Music)",
       designationHi: valueFromAliases(row, ["Hindi Designation","Designation Hindi","Post Hindi","पदनाम","हिंदी पदनाम","पदनाम हिंदी"]),
-      qualification: valueFromAliases(row, ["Educational Qualification","Education Qualification","Educational Qlfcn.","Edu. Qlfcn.","Edu Qlfcn","Edu Qlfcn.","Edu. Qualification","Education","Qualification","Academic Qualification","शैक्षिक योग्यता","शैक्षणिक योग्यता"]),
+      qualification: valueFromAliases(row, ["Educational Qualification","Education Qualification","Educational Qlfcn.","Edu. Qlfcn.","Edu Qlfn.","EDU. QLFN.","Edu Qlfcn","Edu Qlfcn.","Edu. Qualification","Education","Qualification","Academic Qualification","शैक्षिक योग्यता","शैक्षणिक योग्यता"]),
       salutationEn: c.salutationEn ? String(row[c.salutationEn - 1] || "").trim() : "",
       salutationHi: c.salutationHi ? String(row[c.salutationHi - 1] || "").trim() : ""
     });
