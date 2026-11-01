@@ -29,13 +29,13 @@ const $=id=>document.getElementById(id);
 function certStatus(message,error){const el=$("certStatus");el.textContent=message;el.className="status show "+(error?"err":"ok");}
 $("certSendOtp").addEventListener("click",()=>{
  const identity=$("certIdentity").value.trim();
- if(!/^\\d{13}$/.test(identity)){certStatus("Enter exactly 13 digits: 5-digit Employee Code + DOB (DDMMYYYY).",true);return;}
+ if(!/^\d{13}$/.test(identity)){certStatus("Enter exactly 13 digits: 5-digit Employee Code + DOB (DDMMYYYY).",true);return;}
  const btn=$("certSendOtp");btn.disabled=true;certStatus("Checking participant details and sending email OTP…",false);
  google.script.run.withSuccessHandler(result=>{certStatus(result.message||"OTP sent to your registered email.",false);$("certOtpWrap").classList.remove("hidden");$("certVerifyOtp").classList.remove("hidden");$("certOtp").focus();btn.disabled=false;}).withFailureHandler(error=>{certStatus(error&&error.message?error.message:"Could not send OTP. Please try again.",true);btn.disabled=false;}).sendCpdCertificateOtp(identity);
 });
 $("certVerifyOtp").addEventListener("click",()=>{
  const identity=$("certIdentity").value.trim(),otp=$("certOtp").value.trim();
- if(!/^\\d{6}$/.test(otp)){certStatus("Enter the 6-digit OTP sent to your registered email.",true);return;}
+ if(!/^\d{6}$/.test(otp)){certStatus("Enter the 6-digit OTP sent to your registered email.",true);return;}
  const btn=$("certVerifyOtp");btn.disabled=true;certStatus("Verifying OTP…",false);
  google.script.run.withSuccessHandler(result=>{cpdCertificateSession=result.token;certStatus(result.message||"Email verified. You can download your certificate.",false);$("certDownload").classList.remove("hidden");btn.disabled=false;}).withFailureHandler(error=>{certStatus(error&&error.message?error.message:"OTP verification failed.",true);btn.disabled=false;}).verifyCpdCertificateOtp(identity,otp);
 });
