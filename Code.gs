@@ -94,7 +94,7 @@ function doGet(e) {
       .setTitle("Hostel Room Preference — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
-  if (page === "arrival") {
+  if (page === "certificate") {\n    return HtmlService.createHtmlOutputFromFile("Certificate")\n      .setTitle("Download CPD Certificate — ZIET Mumbai")\n      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);\n  }\n  if (page === "arrival") {
     return HtmlService.createHtmlOutputFromFile("Arrival")
       .setTitle("Arrival Facilitation & Departure Plan — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
