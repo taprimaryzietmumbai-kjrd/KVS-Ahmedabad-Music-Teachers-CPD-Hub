@@ -5,6 +5,16 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 :root{font-family:Nunito,Arial,sans-serif;color:#172554;background:#eff6ff}*{box-sizing:border-box}body{margin:0;padding:24px 14px 40px;background:linear-gradient(135deg,#eff6ff,#f5f3ff 55%,#ecfeff);min-height:100vh}.card{max-width:900px;margin:auto;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px #1e3a8a1c}.hero{padding:30px 32px;background:linear-gradient(120deg,#12356a,#2563eb,#0891b2);color:white}.eyebrow{font-size:.78rem;letter-spacing:1.4px;font-weight:900;text-transform:uppercase}.hero h1{margin:12px 0 6px;font-size:clamp(1.6rem,4vw,2.4rem)}.hero .hi{font-size:1.08rem;font-weight:800;color:#dbeafe}.hero p{line-height:1.6;color:#eff6ff}.content{padding:28px 32px 32px}.notice{padding:14px 16px;border:1px solid #bae6fd;border-left:5px solid #0284c7;border-radius:12px;background:#f0f9ff;color:#075985;line-height:1.6;margin-bottom:20px}.heading{font-weight:900;color:#1e40af;font-size:1.12rem;margin:24px 0 14px;padding-bottom:9px;border-bottom:2px solid #dbeafe}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}label{display:grid;gap:7px;padding:13px;background:#f8faff;border:1px solid #dbeafe;border-radius:12px;font-weight:800;font-size:.9rem}input,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;background:white;color:#172554;font:inherit}input:focus,select:focus{outline:3px solid #bfdbfe;border-color:#3b82f6}.full{grid-column:1/-1}.note{font-size:.88rem;line-height:1.6;color:#64748b}.yesno{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.yesno label{display:flex;align-items:center;gap:9px;background:white;border:0;padding:4px}.yesno input{width:auto}.button{margin-top:22px;padding:14px 22px;border:0;border-radius:10px;background:linear-gradient(100deg,#1d4ed8,#0891b2);color:white;font:inherit;font-weight:900;cursor:pointer}.button:disabled{opacity:.6}.status{display:none;padding:14px;margin-top:14px;border-radius:10px;font-weight:800;line-height:1.5}.status.show{display:block}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.back{display:inline-block;margin-top:18px;color:#1d4ed8;font-weight:800;text-decoration:none}.footer{margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px}@media(max-width:620px){body{padding:8px}.hero{padding:24px 20px}.content{padding:22px 16px}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+
+.cert-panel{margin-top:30px;padding:22px;border:1px solid #bfdbfe;border-radius:16px;background:#f8fbff}
+.cert-panel h2{margin:0 0 8px;color:#1e40af;font-size:1.2rem}
+.cert-panel p{line-height:1.6;color:#475569}
+.cert-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cert-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cert-actions .button{margin-top:12px}
+.cert-hidden{display:none!important}
+@media(max-width:620px){.cert-grid{grid-template-columns:1fr}}
+
 </style></head><body><main class="card"><header class="hero"><div class="eyebrow">ZIET Mumbai · KVS Ahmedabad Region</div><h1>Arrival Facilitation & Departure Plan</h1><div class="hi" lang="hi">आगमन सहायता एवं प्रस्थान योजना</div><p>Mass Saturation CPD Training for KV Music Teachers<br>2–6 November 2026 · ZIET Mumbai</p></header><div class="content">
 <div class="notice"><strong>Travel coordination:</strong> This is a separate form for arrival and departure arrangements. Hostel room preferences must be submitted through the Hostel Room Preference form.</div>
 <form id="arrivalForm"><div class="heading">👤 Participant Details</div><div class="grid">
@@ -24,6 +34,23 @@
 <label>2. Expected Time of Departure from ZIET Hostel / प्रस्थान का अपेक्षित समय<select id="departureTime" required><option value="">Select time</option></select></label>
 <div class="full"><label>3. Would you like a “Packed Dinner Parcel” on the last day of the workshop? / क्या आप कार्यशाला के अंतिम दिन पैक्ड डिनर लेना चाहेंगे?<span class="note">Please select Yes if you expect to leave early or have sightseeing plans.</span><div class="yesno"><label><input type="radio" name="packedDinner" value="YES" required> YES / हाँ</label><label><input type="radio" name="packedDinner" value="NO" required> NO / नहीं</label></div></label></div></div>
 <button class="button" id="submit" type="submit">Submit Arrival & Departure Plan →</button><div id="status" class="status" role="status" aria-live="polite"></div></form>
+
+<section class="cert-panel" aria-labelledby="certificateHeading">
+  <h2 id="certificateHeading">🎓 Download Your CPD Certificate / अपना CPD प्रमाणपत्र डाउनलोड करें</h2>
+  <p>Enter your 13-digit EmployeeCodeDOB (5-digit Employee Code followed by Date of Birth in DDMMYYYY format). An OTP will be sent only to your registered email address. WhatsApp and SMS OTP are not used.</p>
+  <div class="cert-grid">
+    <label class="full">EmployeeCodeDOB<input id="certIdentity" type="text" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="e.g. 1234502011985"></label>
+    <label id="certOtpWrap" class="full cert-hidden">6-digit Email OTP<input id="certOtp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Enter OTP received by email"></label>
+  </div>
+  <div class="cert-actions">
+    <button class="button" id="certSendOtp" type="button">Send Email OTP →</button>
+    <button class="button cert-hidden" id="certVerifyOtp" type="button">Verify OTP →</button>
+    <button class="button cert-hidden" id="certDownload" type="button">Download CPD Certificate ↓</button>
+  </div>
+  <div id="certStatus" class="status" role="status" aria-live="polite"></div>
+  <p class="note">Your certificate is retrieved by matching your verified participant name with the certificate filename in the designated CPD Certificates Drive folder. If a matching file is missing or ambiguous, no certificate will be released.</p>
+</section>
+
 <div class="footer note">Arrival and departure details are collected separately from hostel room preferences for coordination purposes.<br><a class="back" href="https://taprimaryzietmumbai-kjrd.github.io/KVS-Ahmedabad-Music-Teachers-CPD-Hub/">← Back to Participants’ Hub</a> · <a class="back" href="https://script.google.com/macros/s/AKfycbznM0k6hy-dnLRD1ld9Dva8DF8Bw_MIbvJzBRau2pavgExfTK4yJ4viZpctTF1JjBhN1g/exec?page=hostel">Hostel Room Preference</a></div></div></main>
 <script>
 const $=id=>document.getElementById(id);let participants=[];
@@ -35,4 +62,85 @@ function updateMode(){const m=$("arrivalMode").value;$("flightWrap").hidden=m!==
 function updateOther(){const show=$("trainTerminal").value==="Any other";$("otherWrap").hidden=!show;$("otherStation").required=show}
 $("arrivalMode").addEventListener("change",updateMode);$("trainTerminal").addEventListener("change",updateOther);loadParticipants();
 $("arrivalForm").addEventListener("submit",e=>{e.preventDefault();const btn=$("submit"),status=$("status");btn.disabled=true;status.textContent="Submitting…";status.className="status show";const data={name:$("name").value,employeeCode:$("employeeCode").value,email:$("email").value,arrivalMode:$("arrivalMode").value,flightTerminal:$("flightTerminal").value,trainTerminal:$("trainTerminal").value,otherStation:$("otherStation").value,busArrival:$("busArrival").value,arrivalMumbaiTime:$("arrivalMumbaiTime").value,arrivalHostelTime:$("arrivalHostelTime").value,arrivalHostelBlock:$("arrivalHostelBlock").value,departureDate:$("departureDate").value,departureTime:$("departureTime").value,packedDinner:document.querySelector('input[name="packedDinner"]:checked')?.value||""};google.script.run.withSuccessHandler(r=>{status.textContent=r.message||"Arrival and departure plan submitted.";status.className="status show ok";btn.disabled=false}).withFailureHandler(err=>{status.textContent=err&&err.message?err.message:"Submission failed. Please try again.";status.className="status show err";btn.disabled=false}).submitArrivalFacilitation(data)});
+
+/* CPD certificate verification — email OTP only. */
+let cpdCertificateSession = "";
+function certStatus(message, error) {
+  const el = $("certStatus");
+  el.textContent = message;
+  el.className = "status show " + (error ? "err" : "ok");
+}
+$("certSendOtp").addEventListener("click", () => {
+  const identity = $("certIdentity").value.trim();
+  if (!/^\\d{13}$/.test(identity)) {
+    certStatus("Enter exactly 13 digits: 5-digit Employee Code + DOB (DDMMYYYY).", true);
+    return;
+  }
+  const btn = $("certSendOtp");
+  btn.disabled = true;
+  certStatus("Checking participant details and sending email OTP…", false);
+  google.script.run.withSuccessHandler(result => {
+    certStatus(result.message || "OTP sent to your registered email.", false);
+    $("certOtpWrap").classList.remove("cert-hidden");
+    $("certVerifyOtp").classList.remove("cert-hidden");
+    $("certOtp").focus();
+    btn.disabled = false;
+  }).withFailureHandler(error => {
+    certStatus(error && error.message ? error.message : "Could not send OTP. Please try again.", true);
+    btn.disabled = false;
+  }).sendCpdCertificateOtp(identity);
+});
+$("certVerifyOtp").addEventListener("click", () => {
+  const identity = $("certIdentity").value.trim();
+  const otp = $("certOtp").value.trim();
+  if (!/^\\d{6}$/.test(otp)) {
+    certStatus("Enter the 6-digit OTP sent to your registered email.", true);
+    return;
+  }
+  const btn = $("certVerifyOtp");
+  btn.disabled = true;
+  certStatus("Verifying OTP…", false);
+  google.script.run.withSuccessHandler(result => {
+    cpdCertificateSession = result.token;
+    certStatus(result.message || "Email verified. You can download your certificate.", false);
+    $("certDownload").classList.remove("cert-hidden");
+    btn.disabled = false;
+  }).withFailureHandler(error => {
+    certStatus(error && error.message ? error.message : "OTP verification failed.", true);
+    btn.disabled = false;
+  }).verifyCpdCertificateOtp(identity, otp);
+});
+$("certDownload").addEventListener("click", () => {
+  if (!cpdCertificateSession) {
+    certStatus("Please complete email OTP verification first.", true);
+    return;
+  }
+  const btn = $("certDownload");
+  btn.disabled = true;
+  certStatus("Retrieving your certificate securely…", false);
+  google.script.run.withSuccessHandler(result => {
+    try {
+      const binary = atob(result.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], {type:result.mimeType || "application/pdf"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.fileName || "CPD-Certificate";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      certStatus("Your CPD certificate download has started.", false);
+    } catch (e) {
+      certStatus("The certificate was retrieved but could not be prepared for download. Please try again.", true);
+    }
+    btn.disabled = false;
+  }).withFailureHandler(error => {
+    certStatus(error && error.message ? error.message : "Certificate download failed. Please try again.", true);
+    btn.disabled = false;
+  }).downloadCpdCertificate(cpdCertificateSession);
+});
+
 </script></body></html>
