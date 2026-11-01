@@ -197,8 +197,7 @@ function submitArrivalFacilitation(data) {
   sh.appendRow([new Date(),name,employeeCode,email,arrivalMode,arrivalMode==="Flight"?flightTerminal:"",arrivalMode==="Train"?trainTerminal:"",arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"",arrivalMode==="Bus"?busArrival:"",arrivalMumbaiTime,arrivalHostelTime,arrivalHostelBlock,departureDate,departureTime,packedDinner]);
   const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
   const pdfText = "ZIET MUMBAI — KVS AHMEDABAD REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
-  const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);
-  tempDoc.getBody().setText(pdfText);
+  const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);  tempDoc.getBody().setText(pdfText);
   tempDoc.saveAndClose();
   const pdfBlob = DriveApp.getFileById(tempDoc.getId()).getAs(MimeType.PDF).setName("Arrival_Departure_"+employeeCode+"_"+departureDate+".pdf");
   const arrivalFolder = DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
@@ -397,8 +396,7 @@ function verifyProfileOtp(employeeCode, registeredEmail, otp) {
   if(!raw) throw new Error("OTP expired or not requested. Request a new code.");
   const state=JSON.parse(raw);
   state.attempts++;
-  const hash=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,otp).map(b=>(b+256).toString(16).slice(-2)).join("");
-  if(hash!==state.hash) {
+  const hash=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,otp).map(b=>(b+256).toString(16).slice(-2)).join("");  if(hash!==state.hash) {
     if(state.attempts>=MAX_OTP_ATTEMPTS) cache.remove(key); else cache.put(key,JSON.stringify(state),OTP_TTL_SECONDS);
     throw new Error(state.attempts>=MAX_OTP_ATTEMPTS?"Too many incorrect attempts. Request a new OTP.":"Incorrect OTP. Please try again.");
   }
@@ -592,4 +590,154 @@ function getHostelParticipantOptions() {
     });
   }
   return out;
+}
+
+
+/* CPD CERTIFICATE ACCESS — email OTP only; no WhatsApp/SMS integration. */
+const CPD_CERTIFICATE_FOLDER_ID = "1RmGYUGD1JyyAE1vMxbXMgSfZcB4JhzRL";
+const CPD_CERTIFICATE_OTP_TTL = 300;
+const CPD_CERTIFICATE_SESSION_TTL = 600;
+const CPD_CERTIFICATE_MAX_ATTEMPTS = 5;
+
+function normalizeCpdDob_(raw, display) {
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return Utilities.formatDate(raw, Session.getScriptTimeZone(), "ddMMyyyy");
+  }
+  const s = String(display || raw || "").trim();
+  if (!s) return "";
+  let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (m) return m[1].padStart(2,"0") + m[2].padStart(2,"0") + m[3];
+  m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+  if (m) return m[3].padStart(2,"0") + m[2].padStart(2,"0") + m[1];
+  const digits = s.replace(/\D/g,"");
+  return digits.length === 8 ? digits : "";
+}
+
+function cpdCertificateIdentity_(employeeCodeDob) {
+  const input = String(employeeCodeDob || "").replace(/\s/g,"");
+  if (!/^\d{13}$/.test(input)) throw new Error("Enter the 13-digit EmployeeCodeDOB: 5-digit Employee Code followed by DOB in DDMMYYYY format.");
+  const employeeCode = input.slice(0,5);
+  const dobInput = input.slice(5);
+  const {sh} = mainSheet_();
+  const c = columns_(sh);
+  const dobCol = c.find(["Date of Birth","DOB","Birth Date","जन्म तिथि","जन्म दिनांक"]);
+  if (!c.employee || !c.email || !c.name || !dobCol) {
+    throw new Error("The master sheet must contain Employee Code, registered Email, participant Name and Date of Birth columns. No certificate was released.");
+  }
+  const data = sh.getDataRange().getValues();
+  const display = sh.getDataRange().getDisplayValues();
+  const matches = [];
+  for (let i=1; i<data.length; i++) {
+    const rowCode = String(display[i][c.employee-1] || "").trim();
+    const rowDob = normalizeCpdDob_(data[i][dobCol-1], display[i][dobCol-1]);
+    if (rowCode === employeeCode && rowDob === dobInput) {
+      const email = String(display[i][c.email-1] || "").trim().toLowerCase();
+      const name = String(display[i][c.name-1] || "").trim();
+      if (email && name) matches.push({row:i+1, employeeCode:rowCode, email:email, name:name});
+    }
+  }
+  if (matches.length !== 1) {
+    throw new Error(matches.length > 1
+      ? "More than one participant record matches these details. Please contact the workshop coordinator."
+      : "Employee Code and Date of Birth did not match a participant record. Please check the 13 digits.");
+  }
+  return matches[0];
+}
+
+function maskCpdEmail_(email) {
+  const parts = String(email || "").split("@");
+  if (parts.length !== 2) return "your registered email";
+  const local = parts[0];
+  const shown = local.length <= 2 ? local.charAt(0) + "*" : local.slice(0,2) + "****";
+  return shown + "@" + parts[1];
+}
+
+function sendCpdCertificateOtp(employeeCodeDob) {
+  const participant = cpdCertificateIdentity_(employeeCodeDob);
+  const cache = CacheService.getScriptCache();
+  const key = "cpd-cert-otp-" + Utilities.base64EncodeWebSafe(participant.employeeCode).slice(0,40);
+  const throttleKey = key + "-sent";
+  if (cache.get(throttleKey)) throw new Error("An OTP was sent recently. Please wait one minute before requesting another.");
+  const otp = String(Math.floor(100000 + Math.random()*900000));
+  const salt = Utilities.getUuid();
+  const hash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + "|" + otp)
+    .map(b => (b+256).toString(16).slice(-2)).join("");
+  cache.put(key, JSON.stringify({hash:hash,salt:salt,row:participant.row,employeeCode:participant.employeeCode,email:participant.email,attempts:0}), CPD_CERTIFICATE_OTP_TTL);
+  cache.put(throttleKey, "1", 60);
+  MailApp.sendEmail({
+    to: participant.email,
+    subject: "ZIET Mumbai — CPD Certificate Verification OTP",
+    body: "Dear " + participant.name + ",\n\nYour one-time verification code for downloading your CPD certificate is: " + otp +
+      "\n\nThis code expires in 5 minutes and can be used only once. Do not share it with anyone. If you did not request this code, please ignore this email.\n\nZIET Mumbai"
+  });
+  return {ok:true, maskedEmail:maskCpdEmail_(participant.email), message:"A 6-digit OTP has been sent to your registered email address (" + maskCpdEmail_(participant.email) + "). It expires in 5 minutes."};
+}
+
+function verifyCpdCertificateOtp(employeeCodeDob, otp) {
+  const participant = cpdCertificateIdentity_(employeeCodeDob);
+  otp = String(otp || "").trim();
+  if (!/^\d{6}$/.test(otp)) throw new Error("Enter the 6-digit OTP sent to your registered email.");
+  const cache = CacheService.getScriptCache();
+  const key = "cpd-cert-otp-" + Utilities.base64EncodeWebSafe(participant.employeeCode).slice(0,40);
+  const raw = cache.get(key);
+  if (!raw) throw new Error("OTP expired or not requested. Please request a new OTP.");
+  const state = JSON.parse(raw);
+  if (state.row !== participant.row || state.email !== participant.email) {
+    cache.remove(key);
+    throw new Error("Participant verification state changed. Please request a new OTP.");
+  }
+  state.attempts++;
+  const hash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, state.salt + "|" + otp)
+    .map(b => (b+256).toString(16).slice(-2)).join("");
+  if (hash !== state.hash) {
+    if (state.attempts >= CPD_CERTIFICATE_MAX_ATTEMPTS) cache.remove(key);
+    else cache.put(key, JSON.stringify(state), CPD_CERTIFICATE_OTP_TTL);
+    throw new Error(state.attempts >= CPD_CERTIFICATE_MAX_ATTEMPTS
+      ? "Too many incorrect attempts. Request a new OTP."
+      : "Incorrect OTP. Please try again.");
+  }
+  cache.remove(key);
+  const token = Utilities.getUuid() + Utilities.getUuid();
+  cache.put("cpd-cert-session-" + token, JSON.stringify({
+    row:participant.row, employeeCode:participant.employeeCode, email:participant.email, name:participant.name
+  }), CPD_CERTIFICATE_SESSION_TTL);
+  return {ok:true, token:token, message:"Email verified successfully. You can now download your CPD certificate."};
+}
+
+function downloadCpdCertificate(token) {
+  const cache = CacheService.getScriptCache();
+  const raw = cache.get("cpd-cert-session-" + String(token || ""));
+  if (!raw) throw new Error("Your verification session has expired. Please verify again.");
+  const session = JSON.parse(raw);
+  const {sh} = mainSheet_();
+  const c = columns_(sh);
+  const currentName = c.name ? String(sh.getRange(session.row,c.name).getDisplayValue() || "").trim() : "";
+  const currentCode = c.employee ? String(sh.getRange(session.row,c.employee).getDisplayValue() || "").trim() : "";
+  const currentEmail = c.email ? String(sh.getRange(session.row,c.email).getDisplayValue() || "").trim().toLowerCase() : "";
+  if (currentName !== session.name || currentCode !== session.employeeCode || currentEmail !== session.email) {
+    cache.remove("cpd-cert-session-" + String(token || ""));
+    throw new Error("Participant record changed after verification. Please verify again.");
+  }
+  const folder = DriveApp.getFolderById(CPD_CERTIFICATE_FOLDER_ID);
+  const files = folder.getFiles();
+  const allowed = {"application/pdf":true,"image/png":true,"image/jpeg":true};
+  const matches = [];
+  while (files.hasNext()) {
+    const file = files.next();
+    const mime = file.getMimeType();
+    if (!allowed[mime]) continue;
+    const fileName = file.getName().replace(/\.(pdf|png|jpe?g)$/i,"").trim();
+    if (fileName.toLowerCase() === session.name.toLowerCase()) matches.push(file);
+  }
+  if (matches.length === 0) throw new Error("Your certificate was not found. Please contact the workshop coordinator.");
+  if (matches.length > 1) throw new Error("More than one certificate file matches your name. Please contact the workshop coordinator; no file was released.");
+  const file = matches[0];
+  if (file.getSize() > 10 * 1024 * 1024) throw new Error("The certificate file is larger than 10 MB. Please contact the coordinator.");
+  const blob = file.getBlob();
+  return {
+    fileName:file.getName(),
+    mimeType:blob.getContentType(),
+    base64:Utilities.base64Encode(blob.getBytes()),
+    message:"Certificate retrieved successfully."
+  };
 }
