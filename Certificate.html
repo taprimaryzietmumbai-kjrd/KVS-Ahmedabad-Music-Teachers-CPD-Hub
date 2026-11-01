@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#172554;background:transparent}
+.panel{padding:22px;border:1px solid #bfdbfe;border-radius:16px;background:#f8fbff}
+h2{margin:0 0 8px;color:#1e40af;font-size:1.2rem}p{line-height:1.6;color:#475569;margin:8px 0 16px}
+label{display:grid;gap:7px;padding:13px;background:#fff;border:1px solid #dbeafe;border-radius:12px;font-weight:800;font-size:.9rem}
+input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;color:#172554}
+input:focus{outline:3px solid #bfdbfe;border-color:#3b82f6}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{margin-top:12px;padding:13px 20px;border:0;border-radius:10px;background:linear-gradient(100deg,#1d4ed8,#0891b2);color:#fff;font:inherit;font-weight:900;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}.hidden{display:none!important}
+.status{display:none;padding:14px;margin-top:14px;border-radius:10px;font-weight:800;line-height:1.5}
+.status.show{display:block}.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}
+.note{font-size:.88rem;color:#64748b;line-height:1.6;margin-top:14px}
+</style></head><body>
+<section class="panel" aria-labelledby="certificateHeading">
+<h2 id="certificateHeading">🎓 Download Your CPD Certificate / अपना CPD प्रमाणपत्र डाउनलोड करें</h2>
+<p>Enter your 13-digit EmployeeCodeDOB (5-digit Employee Code followed by Date of Birth in DDMMYYYY format). An OTP will be sent only to your registered email address. WhatsApp and SMS OTP are not used.</p>
+<label>EmployeeCodeDOB<input id="certIdentity" type="text" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="e.g. 1234502011985"></label>
+<label id="certOtpWrap" class="hidden" style="margin-top:12px">6-digit Email OTP<input id="certOtp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Enter OTP received by email"></label>
+<div class="actions"><button id="certSendOtp" type="button">Send Email OTP →</button><button id="certVerifyOtp" class="hidden" type="button">Verify OTP →</button><button id="certDownload" class="hidden" type="button">Download CPD Certificate ↓</button></div>
+<div id="certStatus" class="status" role="status" aria-live="polite"></div>
+<p class="note">Your certificate is retrieved by matching your verified participant name with the certificate filename in the designated CPD Certificates Drive folder. If a matching file is missing or ambiguous, no certificate will be released.</p>
+</section>
+<script>
+let cpdCertificateSession="";
+const $=id=>document.getElementById(id);
+function certStatus(message,error){const el=$("certStatus");el.textContent=message;el.className="status show "+(error?"err":"ok");}
+$("certSendOtp").addEventListener("click",()=>{
+ const identity=$("certIdentity").value.trim();
+ if(!/^\\d{13}$/.test(identity)){certStatus("Enter exactly 13 digits: 5-digit Employee Code + DOB (DDMMYYYY).",true);return;}
+ const btn=$("certSendOtp");btn.disabled=true;certStatus("Checking participant details and sending email OTP…",false);
+ google.script.run.withSuccessHandler(result=>{certStatus(result.message||"OTP sent to your registered email.",false);$("certOtpWrap").classList.remove("hidden");$("certVerifyOtp").classList.remove("hidden");$("certOtp").focus();btn.disabled=false;}).withFailureHandler(error=>{certStatus(error&&error.message?error.message:"Could not send OTP. Please try again.",true);btn.disabled=false;}).sendCpdCertificateOtp(identity);
+});
+$("certVerifyOtp").addEventListener("click",()=>{
+ const identity=$("certIdentity").value.trim(),otp=$("certOtp").value.trim();
+ if(!/^\\d{6}$/.test(otp)){certStatus("Enter the 6-digit OTP sent to your registered email.",true);return;}
+ const btn=$("certVerifyOtp");btn.disabled=true;certStatus("Verifying OTP…",false);
+ google.script.run.withSuccessHandler(result=>{cpdCertificateSession=result.token;certStatus(result.message||"Email verified. You can download your certificate.",false);$("certDownload").classList.remove("hidden");btn.disabled=false;}).withFailureHandler(error=>{certStatus(error&&error.message?error.message:"OTP verification failed.",true);btn.disabled=false;}).verifyCpdCertificateOtp(identity,otp);
+});
+$("certDownload").addEventListener("click",()=>{
+ if(!cpdCertificateSession){certStatus("Please complete email OTP verification first.",true);return;}
+ const btn=$("certDownload");btn.disabled=true;certStatus("Retrieving your certificate securely…",false);
+ google.script.run.withSuccessHandler(result=>{try{const binary=atob(result.base64),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const blob=new Blob([bytes],{type:result.mimeType||"application/pdf"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=result.fileName||"CPD-Certificate";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);certStatus("Your CPD certificate download has started.",false);}catch(e){certStatus("The certificate was retrieved but could not be prepared for download. Please try again.",true);}btn.disabled=false;}).withFailureHandler(error=>{certStatus(error&&error.message?error.message:"Certificate download failed. Please try again.",true);btn.disabled=false;}).downloadCpdCertificate(cpdCertificateSession);
+});
+</script></body></html>
