@@ -48,6 +48,19 @@ function stripEnglishSalutations(value){
  const re=/^(?:(?:Dr\.?|Shri|Sh\.?|Smt\.?|Km\.?|Mrs\.?|Ms\.?|Mr\.?)[\s,.-]*)+/i;
  return s.replace(re,"").trim();
 }
+function splitEnglishSalutation(value){
+ const original=String(value||"").trim();
+ const match=/^(Dr\\.?|Shri|Sh\\.?|Smt\\.?|Km\\.?|Mrs\\.?|Ms\\.?|Mr\\.?)[\\s,.-]*/i.exec(original);
+ if(!match)return {salutation:"",name:original};
+ const key=match[1].toLowerCase();
+ let salutation=match[1];
+ if(key.startsWith("dr"))salutation="Dr.";
+ else if(key.startsWith("smt")||key.startsWith("mrs"))salutation="Smt.";
+ else if(key.startsWith("sh"))salutation="Shri";
+ else if(key.startsWith("km")||key.startsWith("ms"))salutation="Km.";
+ else if(key.startsWith("mr"))salutation="Shri";
+ return {salutation,name:original.slice(match[0].length).trim()};
+}
 function stripHindiSalutations(value){
  let s=String(value||"").trim();
  const re=/^(?:(?:डॉ\.?|श्रीमती|श्री|सुश्री)[\s,।.-]*)+/;
@@ -87,7 +100,7 @@ populateSchools();populateParticipantSelect();render();
 document.getElementById("downloadDirectoryPdf").addEventListener("click",()=>{const previousSchool=schoolFilter.value;schoolFilter.value="";render();const restore=()=>{schoolFilter.value=previousSchool;render();window.removeEventListener("afterprint",restore);};window.addEventListener("afterprint",restore);window.print();});
 window.participantDirectoryCallback=function(sheetRows){
  if(!Array.isArray(sheetRows)||!sheetRows.length)return;
- participants=sheetRows.map((p,i)=>({n:i+1,name:String(p.name||"").trim(),hi:String(p.hi||"").trim(),school:String(p.school||"").trim(),schoolHi:String(p.schoolHi||"").trim(),employeeCode:String(p.employeeCode||"").trim(),joiningYear:String(p.joiningYear||"").trim(),qualification:String(p.qualification||"").trim(),designation:String(p.designation||"PRT (Music)").trim(),designationHi:String(p.designationHi||"").trim(),salutationEn:String(p.salutationEn||"").trim(),salutationHi:String(p.salutationHi||"").trim()})).filter(p=>p.name||p.hi||p.school);
+ participants=sheetRows.map((p,i)=>{const sourceName=String(p.name||"").trim();const parsed=splitEnglishSalutation(sourceName);return {n:i+1,name:parsed.name,hi:String(p.hi||"").trim(),school:String(p.school||"").trim(),schoolHi:String(p.schoolHi||"").trim(),employeeCode:String(p.employeeCode||"").trim(),joiningYear:String(p.joiningYear||"").trim(),qualification:String(p.qualification||"").trim(),designation:String(p.designation||"PRT (Music)").trim(),designationHi:String(p.designationHi||"").trim(),salutationEn:parsed.salutation,salutationHi:String(p.salutationHi||"").trim()};}).filter(p=>p.name||p.hi||p.school);
  populateSchools();populateParticipantSelect();render();
 };
 const directoryScript=document.createElement("script");
