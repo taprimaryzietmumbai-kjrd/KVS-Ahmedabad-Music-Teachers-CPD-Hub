@@ -48,6 +48,7 @@ function stripEnglishSalutations(value){
  const re=/^(?:(?:Dr\.?|Shri|Sh\.?|Smt\.?|Km\.?|Mrs\.?|Ms\.?|Mr\.?)[\s,.-]*)+/i;
  return s.replace(re,"").trim();
 }
+const COLUMN_B_PARTICIPANT_NAMES=["Smt. Pratibha Devda","Dr. Shweta Rathor","Km. Krishna D. Engineer","Smt. Yamini Modh","Smt. Miki Kumari","Shri Akash Patil","Smt Bharti D. Godgaste","Shri Ashutosh Soni","Smt. Bharati Najardhane","Smt. Chauhan Lataben Premjibhai","Shri Lalit Kumar","Shri Punit Shanker Kinnriya","Shri Tushar Solanki","Shri Lakhan Makhan","Shri Kapil Gandharva","Shri Swaraj Parmar","Smt. Shivalika Sharma","Shri Amar Singh Mali","Shri Sandip Rathod","Shri Gadhavi Dilipdan Bhikhudan","Smt.Nisha Parmar","Shri Parimal Kirtikumar Jadav","Shri Vala Jaydeep Muljibhai","Sh.Ravjibhai Gopani","Shri Gadhavi Mojdan Hemudan","Smt. Swati Bharadwaj","Shri Devesh Ghardey","Shri Govind Harkha Makwana","Smt. Akanksha Pandey","Shri Jignesh Govindbhai Barot","Shri Gadhvi Balvantsang Shankardan","Dr. Sanjay Kumar Ameta","Shri Jadav Tejaskumar Vijaykumar","Shri Sachin Shamkant Jagtap"];
 function splitEnglishSalutation(value){
  const original=String(value||"").trim();
  const match=/^(Dr\\.?|Shri|Sh\\.?|Smt\\.?|Km\\.?|Mrs\\.?|Ms\\.?|Mr\\.?)[\\s,.-]*/i.exec(original);
@@ -100,7 +101,7 @@ populateSchools();populateParticipantSelect();render();
 document.getElementById("downloadDirectoryPdf").addEventListener("click",()=>{const previousSchool=schoolFilter.value;schoolFilter.value="";render();const restore=()=>{schoolFilter.value=previousSchool;render();window.removeEventListener("afterprint",restore);};window.addEventListener("afterprint",restore);window.print();});
 window.participantDirectoryCallback=function(sheetRows){
  if(!Array.isArray(sheetRows)||!sheetRows.length)return;
- participants=sheetRows.map((p,i)=>{const sourceName=String(p.name||"").trim();const parsed=splitEnglishSalutation(sourceName);return {n:i+1,name:parsed.name,hi:String(p.hi||"").trim(),school:String(p.school||"").trim(),schoolHi:String(p.schoolHi||"").trim(),employeeCode:String(p.employeeCode||"").trim(),joiningYear:String(p.joiningYear||"").trim(),qualification:String(p.qualification||"").trim(),designation:String(p.designation||"PRT (Music)").trim(),designationHi:String(p.designationHi||"").trim(),salutationEn:parsed.salutation,salutationHi:String(p.salutationHi||"").trim()};}).filter(p=>p.name||p.hi||p.school);
+ participants=sheetRows.map((p,i)=>{const sourceName=String(COLUMN_B_PARTICIPANT_NAMES[i]||p.name||"").trim();const parsed=splitEnglishSalutation(sourceName);return {n:i+1,name:parsed.name,hi:String(p.hi||"").trim(),school:String(p.school||"").trim(),schoolHi:String(p.schoolHi||"").trim(),employeeCode:String(p.employeeCode||"").trim(),joiningYear:String(p.joiningYear||"").trim(),qualification:String(p.qualification||"").trim(),designation:String(p.designation||"PRT (Music)").trim(),designationHi:String(p.designationHi||"").trim(),salutationEn:parsed.salutation,salutationHi:String(p.salutationHi||"").trim()};}).filter(p=>p.name||p.hi||p.school);
  populateSchools();populateParticipantSelect();render();
 };
 const directoryScript=document.createElement("script");
